@@ -1,7 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import type { ImageSourcePropType } from 'react-native';
+import type {
+  ImageSourcePropType,
+  LayoutRectangle,
+  StyleProp,
+  ViewStyle
+} from 'react-native';
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
     Easing,
@@ -16,8 +21,10 @@ import Animated, {
     withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { SortableGridRenderItem } from 'react-native-sortables';
-import Sortable, { useItemContext } from 'react-native-sortables';
+import Sortable, {
+  type SortableFlexDragEndParams,
+  useItemContext
+} from 'react-native-sortables';
 
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -43,6 +50,8 @@ type WeatherWidgetItem = {
 };
 
 type HomeItem = AppIconItem | WeatherWidgetItem;
+
+type BoardItem = HomeItem & { id: string };
 
 const APP_ICONS: AppIconItem[] = [
   { image: require('../../assets/images/app-icons/facebook.png'), kind: 'app', label: 'Facebook' },
@@ -75,11 +84,6 @@ const WEATHER_WIDGET: WeatherWidgetItem = {
   temperature: '22°'
 };
 
-const homeKeyExtractor = (item: HomeItem) =>
-  item.kind === 'app' ? item.label : item.id;
-
-const dockKeyExtractor = (item: AppIconItem) => item.label;
-
 const shakeTimingConfig = {
   duration: 150,
   easing: Easing.inOut(Easing.ease)
@@ -90,17 +94,21 @@ const GRID_COLUMN_GAP = 16;
 const GRID_ROW_GAP = 18;
 const GRID_HORIZONTAL_PADDING = 22;
 const GRID_VERTICAL_PADDING = 14;
-const DOCK_HORIZONTAL_PADDING = 32;
+const DOCK_BACKGROUND_VERTICAL_PADDING = 14;
+const DOCK_BACKGROUND_HORIZONTAL_PADDING = 24;
+const DOCK_CAPACITY = 4;
 
 type IconProps = {
-  item: AppIconItem;
+  containerStyle?: StyleProp<ViewStyle>;
   isEditing: SharedValue<boolean>;
+  item: AppIconItem;
   onDelete?: (item: AppIconItem) => void;
   showDelete?: boolean;
   size: number;
 };
 
 const Icon = memo(function Icon({
+  containerStyle,
   isEditing,
   item,
   onDelete,
@@ -138,7 +146,13 @@ const Icon = memo(function Icon({
   const imageSize = size - 12;
 
   return (
-    <Animated.View style={[styles.icon, animatedShakeStyle, { width: size }]}> 
+    <Animated.View
+      style={[
+        styles.icon,
+        animatedShakeStyle,
+        { width: size },
+        containerStyle
+      ]}>
       <View
         style={[
           styles.imageContainer,
@@ -172,18 +186,14 @@ type WeatherWidgetProps = {
   isEditing: SharedValue<boolean>;
   item: WeatherWidgetItem;
   onDelete: (item: WeatherWidgetItem) => void;
-  cellSize: number;
-  columnGap: number;
-  rowGap: number;
+  size: { height: number; width: number };
 };
 
 const WeatherWidget = memo(function WeatherWidget({
-  cellSize,
-  columnGap,
   isEditing,
   item,
   onDelete,
-  rowGap
+  size
 }: WeatherWidgetProps) {
   const { isActive } = useItemContext();
 
@@ -209,15 +219,12 @@ const WeatherWidget = memo(function WeatherWidget({
       : { opacity: withTiming(0), pointerEvents: 'none' }
   );
 
-  const widgetWidth = cellSize * 2 + columnGap;
-  const widgetHeight = cellSize * 2 + rowGap;
-
   return (
     <Animated.View
       style={[
         styles.widgetWrapper,
         animatedShakeStyle,
-        { height: widgetHeight, width: widgetWidth }
+        { height: size.height, width: size.width }
       ]}>
       <View style={styles.widgetContainer}>
         <View style={styles.widgetHeader}>
@@ -250,47 +257,60 @@ const WeatherWidget = memo(function WeatherWidget({
 });
 
 export default function AppleIconSort() {
-  const [homeItems, setHomeItems] = useState<HomeItem[]>([
-    WEATHER_WIDGET,
-    ...APP_ICONS.slice(4).map(icon => ({ ...icon }))
+  const [boardItems, setBoardItems] = useState<BoardItem[]>([
+    { ...WEATHER_WIDGET, id: WEATHER_WIDGET.id },
+    ...APP_ICONS.slice(4).map(icon => ({ ...icon, id: icon.label })),
+    ...APP_ICONS.slice(0, 4).map(icon => ({ ...icon, id: icon.label }))
   ]);
-  const [dockItems, setDockItems] = useState<AppIconItem[]>(
-    APP_ICONS.slice(0, 4).map(icon => ({ ...icon }))
-  );
   const [isEditing, setIsEditing] = useState(false);
   const isEditingValue = useDerivedValue(() => isEditing);
 
   const { width: screenWidth } = useWindowDimensions();
 
-  const { cellSize, dockCellSize } = useMemo(() => {
-    const gridContentWidth = screenWidth - GRID_HORIZONTAL_PADDING * 2;
+  const boardContentWidth = useMemo(
+    () => screenWidth - GRID_HORIZONTAL_PADDING * 2,
+    [screenWidth]
+  );
+
+  const cellSize = useMemo(() => {
     const computedCellSize =
-      (gridContentWidth - GRID_COLUMN_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
+      (boardContentWidth - GRID_COLUMN_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
-    const dockContentWidth = screenWidth - DOCK_HORIZONTAL_PADDING * 2;
-    const computedDockCellSize =
-      dockItems.length > 0
-        ? (dockContentWidth - GRID_COLUMN_GAP * (dockItems.length - 1)) /
-          dockItems.length
-        : computedCellSize;
+    return Math.max(58, Math.min(78, computedCellSize));
+  }, [boardContentWidth]);
 
-    return {
-      cellSize: Math.max(64, Math.min(86, computedCellSize)),
-      dockCellSize: Math.max(64, Math.min(90, computedDockCellSize))
-    };
-  }, [dockItems.length, screenWidth]);
+  const widgetSize = useMemo(
+    () => ({
+      height: cellSize * 2 + GRID_ROW_GAP,
+      width: boardContentWidth
+    }),
+    [boardContentWidth, cellSize]
+  );
+
+  const dockStartIndex = useMemo(
+    () => Math.max(0, boardItems.length - DOCK_CAPACITY),
+    [boardItems.length]
+  );
+
+  const dockAnchorKey = boardItems[dockStartIndex]?.id ?? null;
+
+  const [dockBackgroundLayout, setDockBackgroundLayout] = useState<
+    LayoutRectangle | null
+  >(null);
+
+  useEffect(() => {
+    setDockBackgroundLayout(null);
+  }, [dockStartIndex, dockAnchorKey, cellSize]);
 
   // 控制状态栏显示/隐藏
   useEffect(() => {
-    // 当进入编辑模式时隐藏状态栏
     if (isEditing) {
-      // 使用 expo-status-bar 的 hidden 属性
-      // StatusBar 组件会自动处理隐藏/显示
+      // StatusBar hidden is managed by component prop
     }
   }, [isEditing]);
 
-  const handleHomeItemDelete = useCallback((item: HomeItem) => {
-    setHomeItems(prevItems =>
+  const handleBoardItemDelete = useCallback((item: HomeItem) => {
+    setBoardItems(prevItems =>
       prevItems.filter(candidate => {
         if (candidate.kind === 'weather' && item.kind === 'weather') {
           return candidate.id !== item.id;
@@ -305,44 +325,35 @@ export default function AppleIconSort() {
 
   const handleAppIconDelete = useCallback(
     (item: AppIconItem) => {
-      handleHomeItemDelete(item);
+      handleBoardItemDelete(item);
     },
-    [handleHomeItemDelete]
+    [handleBoardItemDelete]
   );
 
-  const renderHomeItem = useCallback<SortableGridRenderItem<HomeItem>>(
-    ({ item }) =>
-      item.kind === 'weather' ? (
-        <WeatherWidget
-          cellSize={cellSize}
-          columnGap={GRID_COLUMN_GAP}
-          isEditing={isEditingValue}
-          item={item}
-          onDelete={handleHomeItemDelete}
-          rowGap={GRID_ROW_GAP}
-        />
-      ) : (
-        <Icon
-          isEditing={isEditingValue}
-          item={item}
-          onDelete={handleAppIconDelete}
-          size={cellSize}
-        />
-      ),
-    [cellSize, handleAppIconDelete, handleHomeItemDelete, isEditingValue]
+  const handleBoardDragEnd = useCallback(
+    ({ order }: SortableFlexDragEndParams) => {
+      setBoardItems(prevItems => {
+        const reordered = order<BoardItem>(prevItems);
+        const next = reordered.map(item => ({ ...item }));
+        const dockStart = Math.max(0, reordered.length - DOCK_CAPACITY);
+        const weatherIndex = reordered.findIndex(
+          item => item.kind === 'weather'
+        );
+
+        if (weatherIndex >= dockStart && dockStart > 0) {
+          const [weather] = next.splice(weatherIndex, 1);
+          next.splice(dockStart - 1, 0, weather);
+        }
+
+        return next;
+      });
+    },
+    []
   );
 
-  const renderDockItem = useCallback<SortableGridRenderItem<AppIconItem>>(
-    ({ item }) => (
-      <Icon
-        isEditing={isEditingValue}
-        item={item}
-        showDelete={false}
-        size={dockCellSize}
-      />
-    ),
-    [dockCellSize, isEditingValue]
-  );
+  const handleDockLayout = useCallback((layout: LayoutRectangle | null) => {
+    setDockBackgroundLayout(layout);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -357,57 +368,91 @@ export default function AppleIconSort() {
           <Text style={styles.buttonText}>Done</Text>
         </AnimatedPressable>
       )}
-      <View
-        style={[
-          styles.gridSection,
-          {
-            paddingHorizontal: GRID_HORIZONTAL_PADDING,
-            paddingTop: GRID_VERTICAL_PADDING
-          }
-        ]}>
-        <Sortable.Grid
-          columnGap={GRID_COLUMN_GAP}
-          columns={GRID_COLUMNS}
-          data={homeItems}
-          inactiveItemOpacity={1}
-          keyExtractor={homeKeyExtractor}
-          overflow='visible'
-          renderItem={renderHomeItem}
-          rowGap={GRID_ROW_GAP}
-          snapOffsetX='70%'
-          onDragEnd={({ data }) => {
-            setHomeItems(data);
-          }}
-          onDragStart={() => {
-            if (!isEditing) {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-              setIsEditing(true);
+      <View style={styles.gridSection}>
+        <View
+          style={[
+            styles.boardContainer,
+            {
+              paddingHorizontal: GRID_HORIZONTAL_PADDING,
+              paddingTop: GRID_VERTICAL_PADDING
             }
-          }}
-        />
-      </View>
-      <View
-        style={[styles.dockArea, { paddingHorizontal: DOCK_HORIZONTAL_PADDING }]}>
-        <View style={styles.dockBackground}>
-          <Sortable.Grid
+          ]}>
+          {dockBackgroundLayout && (
+            <View
+              pointerEvents='none'
+              style={[
+                styles.dockBackground,
+                {
+                  left:
+                    GRID_HORIZONTAL_PADDING - DOCK_BACKGROUND_HORIZONTAL_PADDING,
+                  top:
+                    dockBackgroundLayout.y - DOCK_BACKGROUND_VERTICAL_PADDING,
+                  width:
+                    boardContentWidth + DOCK_BACKGROUND_HORIZONTAL_PADDING * 2,
+                  height:
+                    dockBackgroundLayout.height +
+                    DOCK_BACKGROUND_VERTICAL_PADDING * 2
+                }
+              ]}
+            />
+          )}
+          <Sortable.Flex
             columnGap={GRID_COLUMN_GAP}
-            data={dockItems}
+            flexDirection='row'
+            flexWrap='wrap'
             inactiveItemOpacity={1}
-            keyExtractor={dockKeyExtractor}
-            renderItem={renderDockItem}
-            rowGap={0}
-            rowHeight={dockCellSize + 30}
-            rows={1}
-            onDragEnd={({ data }) => {
-              setDockItems(data);
-            }}
+            onDragEnd={handleBoardDragEnd}
+            rowGap={GRID_ROW_GAP}
             onDragStart={() => {
               if (!isEditing) {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                 setIsEditing(true);
               }
-            }}
-          />
+            }}>
+            {boardItems.map((item, index) => {
+              const key = item.kind === 'app' ? item.label : item.id;
+              const isDock = index >= dockStartIndex;
+              const isFirstDock = isDock && index === dockStartIndex;
+
+              if (item.kind === 'weather') {
+                return (
+                  <View
+                    key={key}
+                    pointerEvents='box-none'
+                    style={{ width: boardContentWidth }}>
+                    <WeatherWidget
+                      isEditing={isEditingValue}
+                      item={item}
+                      onDelete={handleBoardItemDelete}
+                      size={widgetSize}
+                    />
+                  </View>
+                );
+              }
+
+              return (
+                <View
+                  key={key}
+                  onLayout={event => {
+                    if (isFirstDock) {
+                      handleDockLayout(event.nativeEvent.layout);
+                    }
+                  }}
+                  style={{ width: cellSize }}>
+                  <Icon
+                    containerStyle={
+                      isDock ? { marginBottom: 0 } : undefined
+                    }
+                    isEditing={isEditingValue}
+                    item={item}
+                    onDelete={handleAppIconDelete}
+                    showDelete={!isDock}
+                    size={cellSize}
+                  />
+                </View>
+              );
+            })}
+          </Sortable.Flex>
         </View>
       </View>
     </SafeAreaView>
@@ -445,6 +490,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingBottom: 24,
     width: '100%'
+  },
+  boardContainer: {
+    flex: 1,
+    position: 'relative'
   },
 
   deleteButton: {
@@ -547,15 +596,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600'
   },
-  dockArea: {
-    paddingBottom: 24,
-    width: '100%'
-  },
   dockBackground: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderCurve: 'continuous',
-    borderRadius: 40,
-    paddingHorizontal: 24,
-    paddingVertical: 16
+    borderRadius: 44,
+    position: 'absolute',
+    shadowColor: '#000',
+    shadowOffset: { height: 12, width: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 18
   }
 });

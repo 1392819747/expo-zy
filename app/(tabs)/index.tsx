@@ -1,8 +1,8 @@
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ImageSourcePropType } from 'react-native';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
     Easing,
     FadeIn,
@@ -85,14 +85,28 @@ const shakeTimingConfig = {
   easing: Easing.inOut(Easing.ease)
 };
 
+const GRID_COLUMNS = 4;
+const GRID_COLUMN_GAP = 16;
+const GRID_ROW_GAP = 18;
+const GRID_HORIZONTAL_PADDING = 22;
+const GRID_VERTICAL_PADDING = 14;
+const DOCK_HORIZONTAL_PADDING = 32;
+
 type IconProps = {
   item: AppIconItem;
   isEditing: SharedValue<boolean>;
   onDelete?: (item: AppIconItem) => void;
   showDelete?: boolean;
+  size: number;
 };
 
-const Icon = memo(function Icon({ isEditing, item, onDelete, showDelete = true }: IconProps) {
+const Icon = memo(function Icon({
+  isEditing,
+  item,
+  onDelete,
+  showDelete = true,
+  size
+}: IconProps) {
   const { isActive } = useItemContext();
 
   const shakeProgress = useDerivedValue(() =>
@@ -120,12 +134,29 @@ const Icon = memo(function Icon({ isEditing, item, onDelete, showDelete = true }
       : { opacity: withTiming(0), pointerEvents: 'none' }
   );
 
+  const iconCornerRadius = Math.round(size * 0.23);
+  const imageSize = size - 12;
+
   return (
-    <Animated.View style={[styles.icon, animatedShakeStyle]}>
-      <View style={styles.imageContainer}>
-        <Image source={item.image} style={styles.image} />
+    <Animated.View style={[styles.icon, animatedShakeStyle, { width: size }]}> 
+      <View
+        style={[
+          styles.imageContainer,
+          {
+            borderRadius: iconCornerRadius,
+            height: size,
+            width: size
+          }
+        ]}>
+        <Image
+          resizeMode='contain'
+          source={item.image}
+          style={{ height: imageSize, width: imageSize }}
+        />
       </View>
-      <Text style={styles.text}>{item.label}</Text>
+      <Text numberOfLines={1} style={styles.text}>
+        {item.label}
+      </Text>
       {showDelete && onDelete && (
         <AnimatedPressable
           style={[styles.deleteButton, animatedDeleteButtonStyle]}
@@ -141,9 +172,19 @@ type WeatherWidgetProps = {
   isEditing: SharedValue<boolean>;
   item: WeatherWidgetItem;
   onDelete: (item: WeatherWidgetItem) => void;
+  cellSize: number;
+  columnGap: number;
+  rowGap: number;
 };
 
-const WeatherWidget = memo(function WeatherWidget({ isEditing, item, onDelete }: WeatherWidgetProps) {
+const WeatherWidget = memo(function WeatherWidget({
+  cellSize,
+  columnGap,
+  isEditing,
+  item,
+  onDelete,
+  rowGap
+}: WeatherWidgetProps) {
   const { isActive } = useItemContext();
 
   const shakeProgress = useDerivedValue(() =>
@@ -168,8 +209,16 @@ const WeatherWidget = memo(function WeatherWidget({ isEditing, item, onDelete }:
       : { opacity: withTiming(0), pointerEvents: 'none' }
   );
 
+  const widgetWidth = cellSize * 2 + columnGap;
+  const widgetHeight = cellSize * 2 + rowGap;
+
   return (
-    <Animated.View style={[styles.widgetWrapper, animatedShakeStyle]}>
+    <Animated.View
+      style={[
+        styles.widgetWrapper,
+        animatedShakeStyle,
+        { height: widgetHeight, width: widgetWidth }
+      ]}>
       <View style={styles.widgetContainer}>
         <View style={styles.widgetHeader}>
           <View>
@@ -211,6 +260,26 @@ export default function AppleIconSort() {
   const [isEditing, setIsEditing] = useState(false);
   const isEditingValue = useDerivedValue(() => isEditing);
 
+  const { width: screenWidth } = useWindowDimensions();
+
+  const { cellSize, dockCellSize } = useMemo(() => {
+    const gridContentWidth = screenWidth - GRID_HORIZONTAL_PADDING * 2;
+    const computedCellSize =
+      (gridContentWidth - GRID_COLUMN_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
+
+    const dockContentWidth = screenWidth - DOCK_HORIZONTAL_PADDING * 2;
+    const computedDockCellSize =
+      dockItems.length > 0
+        ? (dockContentWidth - GRID_COLUMN_GAP * (dockItems.length - 1)) /
+          dockItems.length
+        : computedCellSize;
+
+    return {
+      cellSize: Math.max(64, Math.min(86, computedCellSize)),
+      dockCellSize: Math.max(64, Math.min(90, computedDockCellSize))
+    };
+  }, [dockItems.length, screenWidth]);
+
   // 控制状态栏显示/隐藏
   useEffect(() => {
     // 当进入编辑模式时隐藏状态栏
@@ -244,20 +313,35 @@ export default function AppleIconSort() {
   const renderHomeItem = useCallback<SortableGridRenderItem<HomeItem>>(
     ({ item }) =>
       item.kind === 'weather' ? (
-        <WeatherWidget isEditing={isEditingValue} item={item} onDelete={handleHomeItemDelete} />
+        <WeatherWidget
+          cellSize={cellSize}
+          columnGap={GRID_COLUMN_GAP}
+          isEditing={isEditingValue}
+          item={item}
+          onDelete={handleHomeItemDelete}
+          rowGap={GRID_ROW_GAP}
+        />
       ) : (
         <Icon
           isEditing={isEditingValue}
           item={item}
           onDelete={handleAppIconDelete}
+          size={cellSize}
         />
       ),
-    [handleAppIconDelete, handleHomeItemDelete, isEditingValue]
+    [cellSize, handleAppIconDelete, handleHomeItemDelete, isEditingValue]
   );
 
   const renderDockItem = useCallback<SortableGridRenderItem<AppIconItem>>(
-    ({ item }) => <Icon isEditing={isEditingValue} item={item} showDelete={false} />,
-    [isEditingValue]
+    ({ item }) => (
+      <Icon
+        isEditing={isEditingValue}
+        item={item}
+        showDelete={false}
+        size={dockCellSize}
+      />
+    ),
+    [dockCellSize, isEditingValue]
   );
 
   return (
@@ -273,16 +357,23 @@ export default function AppleIconSort() {
           <Text style={styles.buttonText}>Done</Text>
         </AnimatedPressable>
       )}
-      <View style={styles.gridSection}>
+      <View
+        style={[
+          styles.gridSection,
+          {
+            paddingHorizontal: GRID_HORIZONTAL_PADDING,
+            paddingTop: GRID_VERTICAL_PADDING
+          }
+        ]}>
         <Sortable.Grid
-          columnGap={24}
-          columns={4}
+          columnGap={GRID_COLUMN_GAP}
+          columns={GRID_COLUMNS}
           data={homeItems}
           inactiveItemOpacity={1}
           keyExtractor={homeKeyExtractor}
           overflow='visible'
           renderItem={renderHomeItem}
-          rowGap={24}
+          rowGap={GRID_ROW_GAP}
           snapOffsetX='70%'
           onDragEnd={({ data }) => {
             setHomeItems(data);
@@ -295,16 +386,17 @@ export default function AppleIconSort() {
           }}
         />
       </View>
-      <View style={styles.dockArea}>
+      <View
+        style={[styles.dockArea, { paddingHorizontal: DOCK_HORIZONTAL_PADDING }]}>
         <View style={styles.dockBackground}>
           <Sortable.Grid
-            columnGap={24}
+            columnGap={GRID_COLUMN_GAP}
             data={dockItems}
             inactiveItemOpacity={1}
             keyExtractor={dockKeyExtractor}
             renderItem={renderDockItem}
             rowGap={0}
-            rowHeight={110}
+            rowHeight={dockCellSize + 30}
             rows={1}
             onDragEnd={({ data }) => {
               setDockItems(data);
@@ -351,9 +443,7 @@ const styles = StyleSheet.create({
   },
   gridSection: {
     flex: 1,
-    paddingBottom: 20,
-    paddingHorizontal: 30,
-    paddingTop: 10,
+    paddingBottom: 24,
     width: '100%'
   },
 
@@ -377,21 +467,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8
   },
-  image: {
-    resizeMode: 'contain',
-    width: '100%'
-  },
   imageContainer: {
     alignItems: 'center',
-    aspectRatio: 1,
     backgroundColor: 'white',
     borderCurve: 'continuous',
-    borderRadius: '30%',
+    boxShadow: '0px 8px 16px rgba(0,0,0,0.18)',
     justifyContent: 'center',
-    // For some reason this is needed as gesture handler goes crazy
-    // when overflow is not set to hidden because the image is likely
-    // overflowing the container (the transparent part of the image
-    // and gesture handler recognizes press events on wrong items)
     overflow: 'hidden',
     padding: 8
   },
@@ -399,20 +480,21 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { height: 1, width: 0 },
-    textShadowRadius: 5
+    marginTop: 6,
+    textAlign: 'center'
   },
   widgetWrapper: {
     position: 'relative'
   },
   widgetContainer: {
-    aspectRatio: 0.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     borderCurve: 'continuous',
     borderRadius: 26,
-    gap: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    flex: 1,
+    gap: 20,
+    justifyContent: 'space-between',
     padding: 18
   },
   widgetHeader: {
@@ -449,7 +531,8 @@ const styles = StyleSheet.create({
   },
   widgetForecastRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    marginTop: 6
   },
   widgetForecastItem: {
     alignItems: 'center',
@@ -466,7 +549,6 @@ const styles = StyleSheet.create({
   },
   dockArea: {
     paddingBottom: 24,
-    paddingHorizontal: 30,
     width: '100%'
   },
   dockBackground: {

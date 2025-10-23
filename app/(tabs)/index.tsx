@@ -98,6 +98,8 @@ const MAX_BOARD_WIDTH = 430;
 const GRID_CELL_MIN_SIZE = 70;
 const GRID_CELL_MAX_SIZE = 82;
 const GRID_LABEL_HEIGHT = 22;
+const ICON_FRAME_INSET = 8;
+const ICON_IMAGE_INSET = 6;
 const DOCK_TOP_GAP = 4;
 const DOCK_VERTICAL_PADDING = 12;
 const DOCK_BACKGROUND_OVERFLOW = 12;
@@ -153,15 +155,23 @@ const Icon = memo(function Icon({
       : { opacity: withTiming(0), pointerEvents: 'none' }
   );
 
-  const iconCornerRadius = Math.round(size * 0.23);
-  const imageSize = size - 18;
+  const frameInset = Math.min(size / 2, ICON_FRAME_INSET);
+  const iconContainerSize = Math.max(0, size - frameInset * 2);
+  const iconCornerRadius = Math.round(iconContainerSize * 0.23);
+  const imagePadding = Math.min(iconContainerSize / 2, ICON_IMAGE_INSET);
+  const imageSize = Math.max(0, iconContainerSize - imagePadding * 2);
 
   return (
     <Animated.View
       style={[
         styles.icon,
         animatedShakeStyle,
-        { width: size },
+        {
+          paddingBottom: showLabel ? 0 : frameInset,
+          paddingHorizontal: frameInset,
+          paddingTop: frameInset,
+          width: size
+        },
         containerStyle
       ]}>
       <View
@@ -169,8 +179,9 @@ const Icon = memo(function Icon({
           styles.imageContainer,
           {
             borderRadius: iconCornerRadius,
-            height: size,
-            width: size
+            height: iconContainerSize,
+            padding: imagePadding,
+            width: iconContainerSize
           }
         ]}>
         <Image

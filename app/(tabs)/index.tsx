@@ -91,12 +91,13 @@ const shakeTimingConfig = {
 const GRID_COLUMNS = 4;
 const GRID_COLUMN_GAP = 16;
 const GRID_ROW_GAP = 18;
-const GRID_HORIZONTAL_PADDING = 22;
+const GRID_HORIZONTAL_PADDING = 18;
 const GRID_VERTICAL_PADDING = 14;
 const DOCK_CAPACITY = 4;
 const MAX_BOARD_WIDTH = 430;
-const GRID_CELL_MIN_SIZE = 60;
-const GRID_CELL_MAX_SIZE = 86;
+const GRID_CELL_MIN_SIZE = 68;
+const GRID_CELL_MAX_SIZE = 94;
+const DOCK_TOP_GAP = 8;
 
 const getBoardItemKey = (item: BoardItem) =>
   item.kind === 'weather' ? item.id : item.label;
@@ -321,6 +322,37 @@ export default function AppleIconSort() {
 
   const dockHeight = useMemo(() => cellSize + 28, [cellSize]);
 
+  const gridCellStyle = useMemo<StyleProp<ViewStyle>>(
+    () => ({
+      alignItems: 'center',
+      flexBasis: cellSize,
+      flexGrow: 0,
+      flexShrink: 0,
+      width: cellSize
+    }),
+    [cellSize]
+  );
+
+  const dockCellStyle = gridCellStyle;
+
+  const dockBackgroundStyle = useMemo<StyleProp<ViewStyle>>(
+    () => ({
+      height: dockHeight,
+      left: GRID_HORIZONTAL_PADDING,
+      right: GRID_HORIZONTAL_PADDING
+    }),
+    [dockHeight]
+  );
+
+  const dockZoneStyle = useMemo<StyleProp<ViewStyle>>(
+    () => ({
+      height: dockHeight,
+      paddingHorizontal: GRID_HORIZONTAL_PADDING,
+      width: boardWidth
+    }),
+    [boardWidth, dockHeight]
+  );
+
   const handleBoardItemDelete = useCallback((item: HomeItem) => {
     setGridItems(prevItems =>
       prevItems.filter(candidate => {
@@ -526,7 +558,7 @@ export default function AppleIconSort() {
                     }
 
                     return (
-                      <View key={key} style={{ width: cellSize }}>
+                      <View key={key} style={gridCellStyle}>
                         <Icon
                           isEditing={isEditingValue}
                           item={item}
@@ -547,7 +579,7 @@ export default function AppleIconSort() {
               styles.dockSection,
               {
                 paddingBottom: insets.bottom + 2,
-                paddingTop: GRID_VERTICAL_PADDING
+                paddingTop: DOCK_TOP_GAP
               }
             ]}>
             <View style={{ width: boardWidth }}>
@@ -555,7 +587,7 @@ export default function AppleIconSort() {
                 pointerEvents='none'
                 style={[
                   styles.dockBackground,
-                  { height: dockHeight }
+                  dockBackgroundStyle
                 ]}
               />
               <Sortable.BaseZone
@@ -564,11 +596,7 @@ export default function AppleIconSort() {
                 onItemLeave={() => handleZoneLeave('dock')}
                 style={[
                   styles.dockZone,
-                  {
-                    paddingHorizontal: GRID_HORIZONTAL_PADDING,
-                    height: dockHeight,
-                    width: boardWidth
-                  }
+                  dockZoneStyle
                 ]}>
                 <Sortable.Flex
                   alignItems='center'
@@ -580,7 +608,7 @@ export default function AppleIconSort() {
                   rowGap={0}
                   style={{ width: boardContentWidth }}>
                   {dockItems.map(item => (
-                    <View key={item.label} style={{ width: cellSize }}>
+                    <View key={item.label} style={dockCellStyle}>
                       <Icon
                         isEditing={isEditingValue}
                         item={item}
@@ -748,10 +776,7 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 44,
     bottom: 0,
-    left: 0,
     position: 'absolute',
-    right: 0,
-    width: '100%',
     shadowColor: '#000',
     shadowOffset: { height: 12, width: 0 },
     shadowOpacity: 0.15,

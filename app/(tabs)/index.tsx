@@ -95,6 +95,7 @@ const GRID_ROW_GAP = 18;
 const GRID_HORIZONTAL_PADDING = 22;
 const GRID_VERTICAL_PADDING = 14;
 const DOCK_CAPACITY = 4;
+const MAX_BOARD_WIDTH = 430;
 
 const getBoardItemKey = (item: BoardItem) =>
   item.kind === 'weather' ? item.id : item.label;
@@ -279,16 +280,21 @@ export default function AppleIconSort() {
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
-  const boardContentWidth = useMemo(
-    () => screenWidth - GRID_HORIZONTAL_PADDING * 2,
+  const boardWidth = useMemo(
+    () => Math.min(screenWidth, MAX_BOARD_WIDTH),
     [screenWidth]
+  );
+
+  const boardContentWidth = useMemo(
+    () => boardWidth - GRID_HORIZONTAL_PADDING * 2,
+    [boardWidth]
   );
 
   const cellSize = useMemo(() => {
     const computedCellSize =
       (boardContentWidth - GRID_COLUMN_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
-    return Math.max(58, Math.min(78, computedCellSize));
+    return Math.max(54, Math.min(64, computedCellSize));
   }, [boardContentWidth]);
 
   const widgetSize = useMemo(
@@ -299,7 +305,7 @@ export default function AppleIconSort() {
     [boardContentWidth, cellSize]
   );
 
-  const dockHeight = useMemo(() => cellSize + 34, [cellSize]);
+  const dockHeight = useMemo(() => cellSize + 28, [cellSize]);
 
   const handleBoardItemDelete = useCallback((item: HomeItem) => {
     setGridItems(prevItems =>
@@ -461,93 +467,94 @@ export default function AppleIconSort() {
         </AnimatedPressable>
       )}
       <MultiZoneProvider>
-        <View
-          style={[
-            styles.gridSection,
-            {
-              paddingBottom: dockHeight + GRID_VERTICAL_PADDING + insets.bottom
-            }
-          ]}>
-          <Sortable.BaseZone
-            onItemDrop={() => handleZoneDrop('grid')}
-            onItemEnter={() => handleZoneEnter('grid')}
-            onItemLeave={() => handleZoneLeave('grid')}
-            style={styles.zoneContainer}>
-            <View
-              style={[
-                styles.boardContainer,
-                {
-                  paddingHorizontal: GRID_HORIZONTAL_PADDING,
-                  paddingTop: GRID_VERTICAL_PADDING
-                }
-              ]}>
-              <Sortable.Flex
-                columnGap={GRID_COLUMN_GAP}
-                flexDirection='row'
-                flexWrap='wrap'
-                inactiveItemOpacity={1}
-                onDragEnd={handleGridDragEnd}
-                onDragStart={handleGridDragStart}
-                rowGap={GRID_ROW_GAP}>
-                {gridItems.map(item => {
-                  const key = getBoardItemKey(item);
+        <View style={styles.boardRoot}>
+          <View style={styles.gridSection}>
+            <Sortable.BaseZone
+              onItemDrop={() => handleZoneDrop('grid')}
+              onItemEnter={() => handleZoneEnter('grid')}
+              onItemLeave={() => handleZoneLeave('grid')}
+              style={styles.zoneContainer}>
+              <View
+                style={[
+                  styles.boardContainer,
+                  {
+                    paddingHorizontal: GRID_HORIZONTAL_PADDING,
+                    paddingTop: GRID_VERTICAL_PADDING,
+                    width: boardWidth
+                  }
+                ]}>
+                <Sortable.Flex
+                  columnGap={GRID_COLUMN_GAP}
+                  flexDirection='row'
+                  flexWrap='wrap'
+                  inactiveItemOpacity={1}
+                  onDragEnd={handleGridDragEnd}
+                  onDragStart={handleGridDragStart}
+                  rowGap={GRID_ROW_GAP}
+                  style={{ paddingBottom: GRID_VERTICAL_PADDING }}>
+                  {gridItems.map(item => {
+                    const key = getBoardItemKey(item);
 
-                  if (item.kind === 'weather') {
+                    if (item.kind === 'weather') {
+                      return (
+                        <View
+                          key={key}
+                          pointerEvents='box-none'
+                          style={{ width: boardContentWidth }}>
+                          <WeatherWidget
+                            isEditing={isEditingValue}
+                            item={item}
+                            onDelete={handleBoardItemDelete}
+                            size={widgetSize}
+                          />
+                        </View>
+                      );
+                    }
+
                     return (
-                      <View
-                        key={key}
-                        pointerEvents='box-none'
-                        style={{ width: boardContentWidth }}>
-                        <WeatherWidget
+                      <View key={key} style={{ width: cellSize }}>
+                        <Icon
                           isEditing={isEditingValue}
                           item={item}
-                          onDelete={handleBoardItemDelete}
-                          size={widgetSize}
+                          onDelete={handleAppIconDelete}
+                          showDelete
+                          size={cellSize}
                         />
                       </View>
                     );
-                  }
-
-                  return (
-                    <View key={key} style={{ width: cellSize }}>
-                      <Icon
-                        isEditing={isEditingValue}
-                        item={item}
-                        onDelete={handleAppIconDelete}
-                        showDelete
-                        size={cellSize}
-                      />
-                    </View>
-                  );
-                })}
-              </Sortable.Flex>
-            </View>
-          </Sortable.BaseZone>
+                  })}
+                </Sortable.Flex>
+              </View>
+            </Sortable.BaseZone>
+          </View>
           <View
             pointerEvents='box-none'
             style={[
-              styles.dockWrapper,
-              { paddingBottom: insets.bottom + 8 }
+              styles.dockSection,
+              {
+                paddingBottom: insets.bottom + 8,
+                paddingTop: GRID_VERTICAL_PADDING
+              }
             ]}>
-            <View
-              pointerEvents='none'
-              style={[
-                styles.dockBackground,
-                {
-                  width: boardContentWidth + GRID_HORIZONTAL_PADDING * 2,
-                  height: dockHeight
-                }
-              ]}
-            />
-            <Sortable.BaseZone
-              onItemDrop={() => handleZoneDrop('dock')}
-              onItemEnter={() => handleZoneEnter('dock')}
-              onItemLeave={() => handleZoneLeave('dock')}
-              style={{ width: boardContentWidth + GRID_HORIZONTAL_PADDING * 2 }}>
+            <View style={{ width: boardWidth }}>
               <View
+                pointerEvents='none'
                 style={[
-                  styles.dockContent,
-                  { paddingHorizontal: GRID_HORIZONTAL_PADDING }
+                  styles.dockBackground,
+                  { height: dockHeight }
+                ]}
+              />
+              <Sortable.BaseZone
+                onItemDrop={() => handleZoneDrop('dock')}
+                onItemEnter={() => handleZoneEnter('dock')}
+                onItemLeave={() => handleZoneLeave('dock')}
+                style={[
+                  styles.dockZone,
+                  {
+                    paddingHorizontal: GRID_HORIZONTAL_PADDING,
+                    height: dockHeight,
+                    width: boardWidth
+                  }
                 ]}>
                 <Sortable.Flex
                   alignItems='center'
@@ -569,8 +576,8 @@ export default function AppleIconSort() {
                     </View>
                   ))}
                 </Sortable.Flex>
-              </View>
-            </Sortable.BaseZone>
+              </Sortable.BaseZone>
+            </View>
           </View>
         </View>
       </MultiZoneProvider>
@@ -601,9 +608,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   },
   container: {
-    alignItems: 'center',
     backgroundColor: '#3498db',
     flex: 1
+  },
+  boardRoot: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'space-between',
+    width: '100%'
   },
   gridSection: {
     flex: 1,
@@ -611,6 +623,7 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   boardContainer: {
+    alignSelf: 'center',
     flex: 1,
     position: 'relative'
   },
@@ -720,22 +733,23 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 44,
     bottom: 0,
+    left: 0,
     position: 'absolute',
+    right: 0,
+    width: '100%',
     shadowColor: '#000',
     shadowOffset: { height: 12, width: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 18
   },
-  dockWrapper: {
+  dockSection: {
     alignItems: 'center',
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0
+    flexShrink: 0,
+    width: '100%'
   },
-  dockContent: {
-    alignItems: 'center',
-    justifyContent: 'center'
+  dockZone: {
+    justifyContent: 'center',
+    paddingVertical: 12
   },
   zoneContainer: {
     flex: 1

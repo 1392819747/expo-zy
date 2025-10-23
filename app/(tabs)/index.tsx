@@ -1,12 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import type {
-  ImageSourcePropType,
-  LayoutRectangle,
-  StyleProp,
-  ViewStyle
-} from 'react-native';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import type { ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
     Easing,
@@ -20,8 +15,9 @@ import Animated, {
     withSequence,
     withTiming
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Sortable, {
+  MultiZoneProvider,
   type SortableFlexDragEndParams,
   useItemContext
 } from 'react-native-sortables';
@@ -52,6 +48,10 @@ type WeatherWidgetItem = {
 type HomeItem = AppIconItem | WeatherWidgetItem;
 
 type BoardItem = HomeItem & { id: string };
+
+type DragOrigin = 'dock' | 'grid';
+
+type DropZone = DragOrigin;
 
 const APP_ICONS: AppIconItem[] = [
   { image: require('../../assets/images/app-icons/facebook.png'), kind: 'app', label: 'Facebook' },
@@ -94,9 +94,10 @@ const GRID_COLUMN_GAP = 16;
 const GRID_ROW_GAP = 18;
 const GRID_HORIZONTAL_PADDING = 22;
 const GRID_VERTICAL_PADDING = 14;
-const DOCK_BACKGROUND_VERTICAL_PADDING = 14;
-const DOCK_BACKGROUND_HORIZONTAL_PADDING = 24;
 const DOCK_CAPACITY = 4;
+
+const getBoardItemKey = (item: BoardItem) =>
+  item.kind === 'weather' ? item.id : item.label;
 
 type IconProps = {
   containerStyle?: StyleProp<ViewStyle>;
@@ -257,15 +258,26 @@ const WeatherWidget = memo(function WeatherWidget({
 });
 
 export default function AppleIconSort() {
-  const [boardItems, setBoardItems] = useState<BoardItem[]>([
-    { ...WEATHER_WIDGET, id: WEATHER_WIDGET.id },
-    ...APP_ICONS.slice(4).map(icon => ({ ...icon, id: icon.label })),
-    ...APP_ICONS.slice(0, 4).map(icon => ({ ...icon, id: icon.label }))
-  ]);
+  const initialDockIcons = useMemo(
+    () => APP_ICONS.slice(0, DOCK_CAPACITY).map(icon => ({ ...icon, id: icon.label })),
+    []
+  );
+  const initialGridItems = useMemo(
+    () =>
+      [
+        { ...WEATHER_WIDGET, id: WEATHER_WIDGET.id },
+        ...APP_ICONS.slice(DOCK_CAPACITY).map(icon => ({ ...icon, id: icon.label }))
+      ],
+    []
+  );
+
+  const [gridItems, setGridItems] = useState<BoardItem[]>(initialGridItems);
+  const [dockItems, setDockItems] = useState<AppIconItem[]>(initialDockIcons);
   const [isEditing, setIsEditing] = useState(false);
   const isEditingValue = useDerivedValue(() => isEditing);
 
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const boardContentWidth = useMemo(
     () => screenWidth - GRID_HORIZONTAL_PADDING * 2,
@@ -287,30 +299,10 @@ export default function AppleIconSort() {
     [boardContentWidth, cellSize]
   );
 
-  const dockStartIndex = useMemo(
-    () => Math.max(0, boardItems.length - DOCK_CAPACITY),
-    [boardItems.length]
-  );
-
-  const dockAnchorKey = boardItems[dockStartIndex]?.id ?? null;
-
-  const [dockBackgroundLayout, setDockBackgroundLayout] = useState<
-    LayoutRectangle | null
-  >(null);
-
-  useEffect(() => {
-    setDockBackgroundLayout(null);
-  }, [dockStartIndex, dockAnchorKey, cellSize]);
-
-  // 控制状态栏显示/隐藏
-  useEffect(() => {
-    if (isEditing) {
-      // StatusBar hidden is managed by component prop
-    }
-  }, [isEditing]);
+  const dockHeight = useMemo(() => cellSize + 34, [cellSize]);
 
   const handleBoardItemDelete = useCallback((item: HomeItem) => {
-    setBoardItems(prevItems =>
+    setGridItems(prevItems =>
       prevItems.filter(candidate => {
         if (candidate.kind === 'weather' && item.kind === 'weather') {
           return candidate.id !== item.id;
@@ -330,30 +322,130 @@ export default function AppleIconSort() {
     [handleBoardItemDelete]
   );
 
-  const handleBoardDragEnd = useCallback(
-    ({ order }: SortableFlexDragEndParams) => {
-      setBoardItems(prevItems => {
-        const reordered = order<BoardItem>(prevItems);
-        const next = reordered.map(item => ({ ...item }));
-        const dockStart = Math.max(0, reordered.length - DOCK_CAPACITY);
-        const weatherIndex = reordered.findIndex(
-          item => item.kind === 'weather'
-        );
+  const activeItemRef = useRef<BoardItem | null>(null);
+  const activeOriginRef = useRef<DragOrigin | null>(null);
+  const dropZoneRef = useRef<DropZone | null>(null);
 
-        if (weatherIndex >= dockStart && dockStart > 0) {
-          const [weather] = next.splice(weatherIndex, 1);
-          next.splice(dockStart - 1, 0, weather);
-        }
+  const resetActiveTracking = useCallback(() => {
+    activeItemRef.current = null;
+    activeOriginRef.current = null;
+    dropZoneRef.current = null;
+  }, []);
 
-        return next;
-      });
+  const captureActiveItem = useCallback(
+    (origin: DragOrigin, key: string) => {
+      activeOriginRef.current = origin;
+      const sourceItems = origin === 'grid' ? gridItems : dockItems;
+      const foundItem = sourceItems.find(item => getBoardItemKey(item as BoardItem) === key);
+      activeItemRef.current = foundItem ? ({ ...foundItem } as BoardItem) : null;
     },
-    []
+    [dockItems, gridItems]
   );
 
-  const handleDockLayout = useCallback((layout: LayoutRectangle | null) => {
-    setDockBackgroundLayout(layout);
+  const handleZoneEnter = useCallback((zone: DropZone) => {
+    dropZoneRef.current = zone;
   }, []);
+
+  const handleZoneLeave = useCallback((zone: DropZone) => {
+    if (dropZoneRef.current === zone) {
+      dropZoneRef.current = null;
+    }
+  }, []);
+
+  const handleZoneDrop = useCallback((zone: DropZone) => {
+    dropZoneRef.current = zone;
+  }, []);
+
+  const handleGridDragStart = useCallback(
+    ({ key }: { key: string }) => {
+      captureActiveItem('grid', key);
+      if (!isEditing) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        setIsEditing(true);
+      }
+    },
+    [captureActiveItem, isEditing]
+  );
+
+  const handleDockDragStart = useCallback(
+    ({ key }: { key: string }) => {
+      captureActiveItem('dock', key);
+      if (!isEditing) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        setIsEditing(true);
+      }
+    },
+    [captureActiveItem, isEditing]
+  );
+
+  const handleGridDragEnd = useCallback(
+    ({ order }: SortableFlexDragEndParams) => {
+      setGridItems(prevItems => {
+        const reordered = order<BoardItem>(prevItems);
+        const activeItem = activeItemRef.current;
+        const activeOrigin = activeOriginRef.current;
+        const dropZone = dropZoneRef.current;
+
+        if (!activeItem || activeOrigin !== 'grid') {
+          return reordered;
+        }
+
+        if (dropZone === 'dock' && activeItem.kind === 'app') {
+          let shouldRemoveFromGrid = false;
+          setDockItems(prevDock => {
+            if (prevDock.some(candidate => candidate.label === activeItem.label)) {
+              return prevDock;
+            }
+            if (prevDock.length >= DOCK_CAPACITY) {
+              return prevDock;
+            }
+            shouldRemoveFromGrid = true;
+            return [...prevDock, { ...activeItem }];
+          });
+
+          if (shouldRemoveFromGrid) {
+            return reordered.filter(item => getBoardItemKey(item) !== getBoardItemKey(activeItem));
+          }
+        }
+
+        return reordered;
+      });
+
+      resetActiveTracking();
+    },
+    [resetActiveTracking]
+  );
+
+  const handleDockDragEnd = useCallback(
+    ({ order }: SortableFlexDragEndParams) => {
+      setDockItems(prevItems => {
+        const reordered = order<AppIconItem>(prevItems);
+        const activeItem = activeItemRef.current;
+        const activeOrigin = activeOriginRef.current;
+        const dropZone = dropZoneRef.current;
+
+        if (!activeItem || activeOrigin !== 'dock') {
+          return reordered;
+        }
+
+        if (dropZone === 'grid' && activeItem.kind === 'app') {
+          const filteredDock = reordered.filter(item => item.label !== activeItem.label);
+          setGridItems(prevGrid => {
+            if (prevGrid.some(candidate => getBoardItemKey(candidate) === getBoardItemKey(activeItem))) {
+              return prevGrid;
+            }
+            return [...prevGrid, { ...activeItem }];
+          });
+          return filteredDock;
+        }
+
+        return reordered;
+      });
+
+      resetActiveTracking();
+    },
+    [resetActiveTracking]
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -368,95 +460,122 @@ export default function AppleIconSort() {
           <Text style={styles.buttonText}>Done</Text>
         </AnimatedPressable>
       )}
-      <View style={styles.gridSection}>
+      <MultiZoneProvider>
         <View
           style={[
-            styles.boardContainer,
+            styles.gridSection,
             {
-              paddingHorizontal: GRID_HORIZONTAL_PADDING,
-              paddingTop: GRID_VERTICAL_PADDING
+              paddingBottom: dockHeight + GRID_VERTICAL_PADDING + insets.bottom
             }
           ]}>
-          {dockBackgroundLayout && (
+          <Sortable.BaseZone
+            onItemDrop={() => handleZoneDrop('grid')}
+            onItemEnter={() => handleZoneEnter('grid')}
+            onItemLeave={() => handleZoneLeave('grid')}
+            style={styles.zoneContainer}>
+            <View
+              style={[
+                styles.boardContainer,
+                {
+                  paddingHorizontal: GRID_HORIZONTAL_PADDING,
+                  paddingTop: GRID_VERTICAL_PADDING
+                }
+              ]}>
+              <Sortable.Flex
+                columnGap={GRID_COLUMN_GAP}
+                flexDirection='row'
+                flexWrap='wrap'
+                inactiveItemOpacity={1}
+                onDragEnd={handleGridDragEnd}
+                onDragStart={handleGridDragStart}
+                rowGap={GRID_ROW_GAP}>
+                {gridItems.map(item => {
+                  const key = getBoardItemKey(item);
+
+                  if (item.kind === 'weather') {
+                    return (
+                      <View
+                        key={key}
+                        pointerEvents='box-none'
+                        style={{ width: boardContentWidth }}>
+                        <WeatherWidget
+                          isEditing={isEditingValue}
+                          item={item}
+                          onDelete={handleBoardItemDelete}
+                          size={widgetSize}
+                        />
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View key={key} style={{ width: cellSize }}>
+                      <Icon
+                        isEditing={isEditingValue}
+                        item={item}
+                        onDelete={handleAppIconDelete}
+                        showDelete
+                        size={cellSize}
+                      />
+                    </View>
+                  );
+                })}
+              </Sortable.Flex>
+            </View>
+          </Sortable.BaseZone>
+          <View
+            pointerEvents='box-none'
+            style={[
+              styles.dockWrapper,
+              { paddingBottom: insets.bottom + 8 }
+            ]}>
             <View
               pointerEvents='none'
               style={[
                 styles.dockBackground,
                 {
-                  left:
-                    GRID_HORIZONTAL_PADDING - DOCK_BACKGROUND_HORIZONTAL_PADDING,
-                  top:
-                    dockBackgroundLayout.y - DOCK_BACKGROUND_VERTICAL_PADDING,
-                  width:
-                    boardContentWidth + DOCK_BACKGROUND_HORIZONTAL_PADDING * 2,
-                  height:
-                    dockBackgroundLayout.height +
-                    DOCK_BACKGROUND_VERTICAL_PADDING * 2
+                  width: boardContentWidth + GRID_HORIZONTAL_PADDING * 2,
+                  height: dockHeight
                 }
               ]}
             />
-          )}
-          <Sortable.Flex
-            columnGap={GRID_COLUMN_GAP}
-            flexDirection='row'
-            flexWrap='wrap'
-            inactiveItemOpacity={1}
-            onDragEnd={handleBoardDragEnd}
-            rowGap={GRID_ROW_GAP}
-            onDragStart={() => {
-              if (!isEditing) {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                setIsEditing(true);
-              }
-            }}>
-            {boardItems.map((item, index) => {
-              const key = item.kind === 'app' ? item.label : item.id;
-              const isDock = index >= dockStartIndex;
-              const isFirstDock = isDock && index === dockStartIndex;
-
-              if (item.kind === 'weather') {
-                return (
-                  <View
-                    key={key}
-                    pointerEvents='box-none'
-                    style={{ width: boardContentWidth }}>
-                    <WeatherWidget
-                      isEditing={isEditingValue}
-                      item={item}
-                      onDelete={handleBoardItemDelete}
-                      size={widgetSize}
-                    />
-                  </View>
-                );
-              }
-
-              return (
-                <View
-                  key={key}
-                  onLayout={event => {
-                    if (isFirstDock) {
-                      handleDockLayout(event.nativeEvent.layout);
-                    }
-                  }}
-                  style={{ width: cellSize }}>
-                  <Icon
-                    containerStyle={
-                      isDock ? { marginBottom: 0 } : undefined
-                    }
-                    isEditing={isEditingValue}
-                    item={item}
-                    onDelete={handleAppIconDelete}
-                    showDelete={!isDock}
-                    size={cellSize}
-                  />
-                </View>
-              );
-            })}
-          </Sortable.Flex>
+            <Sortable.BaseZone
+              onItemDrop={() => handleZoneDrop('dock')}
+              onItemEnter={() => handleZoneEnter('dock')}
+              onItemLeave={() => handleZoneLeave('dock')}
+              style={{ width: boardContentWidth + GRID_HORIZONTAL_PADDING * 2 }}>
+              <View
+                style={[
+                  styles.dockContent,
+                  { paddingHorizontal: GRID_HORIZONTAL_PADDING }
+                ]}>
+                <Sortable.Flex
+                  alignItems='center'
+                  columnGap={GRID_COLUMN_GAP}
+                  flexDirection='row'
+                  inactiveItemOpacity={1}
+                  onDragEnd={handleDockDragEnd}
+                  onDragStart={handleDockDragStart}
+                  rowGap={0}
+                  style={{ width: boardContentWidth }}>
+                  {dockItems.map(item => (
+                    <View key={item.label} style={{ width: cellSize }}>
+                      <Icon
+                        isEditing={isEditingValue}
+                        item={item}
+                        size={cellSize}
+                        showDelete={false}
+                      />
+                    </View>
+                  ))}
+                </Sortable.Flex>
+              </View>
+            </Sortable.BaseZone>
+          </View>
         </View>
-      </View>
+      </MultiZoneProvider>
     </SafeAreaView>
-    );
+  );
 }
 
 const styles = StyleSheet.create({
@@ -488,7 +607,7 @@ const styles = StyleSheet.create({
   },
   gridSection: {
     flex: 1,
-    paddingBottom: 24,
+    position: 'relative',
     width: '100%'
   },
   boardContainer: {
@@ -600,10 +719,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderCurve: 'continuous',
     borderRadius: 44,
+    bottom: 0,
     position: 'absolute',
     shadowColor: '#000',
     shadowOffset: { height: 12, width: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 18
+  },
+  dockWrapper: {
+    alignItems: 'center',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0
+  },
+  dockContent: {
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  zoneContainer: {
+    flex: 1
   }
 });

@@ -1,6 +1,15 @@
 // 天气数据获取服务
 import * as Location from 'expo-location';
 
+// 动态导入AsyncStorage
+let AsyncStorage: any;
+try {
+  AsyncStorage = require('@react-native-async-storage/async-storage').default;
+} catch (error) {
+  console.warn('AsyncStorage not available, caching will be disabled');
+  AsyncStorage = null;
+}
+
 export interface WeatherData {
   location: string;
   condition: string;
@@ -11,6 +20,65 @@ export interface WeatherData {
     time: string;
     temperature: string;
   }[];
+}
+
+// 缓存相关常量
+const WEATHER_CACHE_KEY = 'weather_cache_data';
+const WEATHER_CACHE_TIMESTAMP_KEY = 'weather_cache_timestamp';
+const CACHE_EXPIRY_HOURS = 4; // 缓存4小时
+
+// 检查缓存是否过期
+function isCacheExpired(timestamp: number): boolean {
+  const now = Date.now();
+  const expiryTime = CACHE_EXPIRY_HOURS * 60 * 60 * 1000; // 转换为毫秒
+  return now - timestamp > expiryTime;
+}
+
+// 从缓存获取天气数据
+async function getCachedWeatherData(): Promise<WeatherData | null> {
+  // 如果AsyncStorage不可用，直接返回null
+  if (!AsyncStorage) {
+    console.log('AsyncStorage不可用，跳过缓存');
+    return null;
+  }
+  
+  try {
+    const cachedData = await AsyncStorage.getItem(WEATHER_CACHE_KEY);
+    const cachedTimestamp = await AsyncStorage.getItem(WEATHER_CACHE_TIMESTAMP_KEY);
+    
+    if (!cachedData || !cachedTimestamp) {
+      return null;
+    }
+    
+    const timestamp = parseInt(cachedTimestamp, 10);
+    if (isNaN(timestamp) || isCacheExpired(timestamp)) {
+      // 缓存过期，清除缓存
+      await AsyncStorage.removeItem(WEATHER_CACHE_KEY);
+      await AsyncStorage.removeItem(WEATHER_CACHE_TIMESTAMP_KEY);
+      return null;
+    }
+    
+    return JSON.parse(cachedData) as WeatherData;
+  } catch (error) {
+    console.error('获取缓存天气数据失败:', error);
+    return null;
+  }
+}
+
+// 保存天气数据到缓存
+async function saveWeatherDataToCache(data: WeatherData): Promise<void> {
+  // 如果AsyncStorage不可用，直接返回
+  if (!AsyncStorage) {
+    console.log('AsyncStorage不可用，跳过缓存保存');
+    return;
+  }
+  
+  try {
+    await AsyncStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(data));
+    await AsyncStorage.setItem(WEATHER_CACHE_TIMESTAMP_KEY, Date.now().toString());
+  } catch (error) {
+    console.error('保存天气数据到缓存失败:', error);
+  }
 }
 
 // 请求定位权限
@@ -36,8 +104,7 @@ export async function getCurrentLocation(): Promise<{ latitude: number; longitud
 
     // 获取当前位置
     const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-      maximumAge: 4 * 60 * 60 * 1000 // 4小时缓存
+      accuracy: Location.Accuracy.High
     });
 
     // 获取地址信息
@@ -124,24 +191,45 @@ export async function getCityNameFromCoordinates(lat: number, lng: number): Prom
 // 主要的天气数据获取函数
 export async function fetchWeatherData(): Promise<WeatherData> {
   try {
+    // 首先尝试从缓存获取数据
+    const cachedData = await getCachedWeatherData();
+    if (cachedData) {
+      console.log('使用缓存的天气数据:', cachedData.location);
+      return cachedData;
+    }
+    
+    console.log('缓存未命中或已过期，重新获取天气数据');
+    
     // 1. 获取用户位置
     const location = await getCurrentLocation();
     
+    let weatherData: WeatherData;
     if (location) {
       // 2. 根据位置获取城市名称
       const cityName = await getCityNameFromCoordinates(location.latitude, location.longitude);
       
       // 3. 从腾讯天气爬取数据
-      const weatherData = await fetchTencentWeatherData(cityName);
-      
-      return weatherData;
+      weatherData = await fetchTencentWeatherData(cityName);
     } else {
       // 如果没有位置权限，使用默认城市
       console.log('无法获取位置，使用默认城市数据');
-      return await fetchTencentWeatherData('北京');
+      weatherData = await fetchTencentWeatherData('北京');
     }
+    
+    // 保存到缓存
+    await saveWeatherDataToCache(weatherData);
+    
+    return weatherData;
   } catch (error) {
     console.error('获取天气数据失败:', error);
+    
+    // 如果获取新数据失败，尝试返回过期的缓存数据
+    const cachedData = await getCachedWeatherData();
+    if (cachedData) {
+      console.log('获取新数据失败，返回过期的缓存数据');
+      return cachedData;
+    }
+    
     // 返回默认数据
     return {
       location: '北京',
@@ -166,6 +254,46 @@ export async function getUserLocation(): Promise<{ latitude: number; longitude: 
 }
 
 export async function fetchWeatherByLocation(lat: number, lng: number): Promise<WeatherData> {
-  const cityName = await getCityNameFromCoordinates(lat, lng);
-  return await fetchTencentWeatherData(cityName);
+  try {
+    // 首先尝试从缓存获取数据
+    const cachedData = await getCachedWeatherData();
+    if (cachedData) {
+      console.log('使用缓存的天气数据:', cachedData.location);
+      return cachedData;
+    }
+    
+    console.log('缓存未命中或已过期，重新获取天气数据');
+    
+    const cityName = await getCityNameFromCoordinates(lat, lng);
+    const weatherData = await fetchTencentWeatherData(cityName);
+    
+    // 保存到缓存
+    await saveWeatherDataToCache(weatherData);
+    
+    return weatherData;
+  } catch (error) {
+    console.error('根据位置获取天气数据失败:', error);
+    
+    // 如果获取新数据失败，尝试返回过期的缓存数据
+    const cachedData = await getCachedWeatherData();
+    if (cachedData) {
+      console.log('获取新数据失败，返回过期的缓存数据');
+      return cachedData;
+    }
+    
+    // 返回默认数据
+    return {
+      location: '当前位置',
+      condition: '多云',
+      temperature: '20°',
+      high: '25°',
+      low: '15°',
+      hourly: [
+        { time: '现在', temperature: '20°' },
+        { time: '15时', temperature: '22°' },
+        { time: '16时', temperature: '23°' },
+        { time: '17时', temperature: '21°' }
+      ]
+    };
+  }
 }

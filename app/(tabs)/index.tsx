@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
@@ -32,7 +33,6 @@ import Sortable, {
   useItemContext
 } from 'react-native-sortables';
 
-import WeChatApp, { type WeChatTabKey } from '../../components/wechat-app';
 import { fetchWeatherByLocation, fetchWeatherData, getUserLocation, WeatherData } from '../../services/weatherService';
 
 
@@ -123,6 +123,17 @@ const shakeTimingConfig = {
 const isIOS = Platform.OS === 'ios';
 const isAndroid = Platform.OS === 'android';
 
+// 平台特定字体
+const FONT_FAMILY = {
+  android: 'AlibabaPuHuiTi-3-95-ExtraBold', // 阿里巴巴普惠体-特粗体
+  ios: 'System' // iOS使用系统字体
+};
+
+// 平台特定字体大小调整
+const getFontSize = (baseSize: number) => {
+  return isAndroid ? Math.round(baseSize * 0.85) : baseSize; // Android字体缩小15%
+};
+
 // 基础配置
 const GRID_COLUMNS = 4;
 const GRID_COLUMN_GAP = 16;
@@ -140,10 +151,11 @@ const ICON_IMAGE_INSET = 6;
 
 // 平台特定的Dock配置
 const DOCK_TOP_GAP = isAndroid ? 8 : 4; // Android需要更多顶部间距
-const DOCK_VERTICAL_PADDING = isAndroid ? 16 : 12; // Android需要更多垂直内边距
-const DOCK_BACKGROUND_OVERFLOW = isAndroid ? 16 : 12; // Android需要更多背景溢出
-const DOCK_BOTTOM_EXTRA_PADDING = isAndroid ? 12 : 8; // Android需要更多底部额外内边距
-const DOCK_COLUMN_GAP = isAndroid ? 18 : 14; // Android需要更多列间距
+const DOCK_VERTICAL_PADDING = isAndroid ? 8 : 12; // Android需要更多垂直内边距
+const DOCK_BACKGROUND_OVERFLOW = isAndroid ? 55 : 12; // Android需要更多背景溢出
+const DOCK_BOTTOM_EXTRA_PADDING = isAndroid ? 13 : 8; // Android需要更多底部额外内边距
+const DOCK_COLUMN_GAP = isAndroid ? 8 : 14; // Android减少列间距，与iOS保持一致
+const DOCK_HORIZONTAL_MARGIN = isAndroid ? 20 : 0; // Android增加水平边距，避免贴边
 
 const getBoardItemKey = (item: BoardItem) =>
   item.kind === 'weather' ? item.id : item.label;
@@ -453,8 +465,6 @@ export default function AppleIconSort() {
   const [gridItems, setGridItems] = useState<BoardItem[]>(initialGridItems);
   const [dockItems, setDockItems] = useState<AppIconItem[]>(initialDockIcons);
   const [isEditing, setIsEditing] = useState(false);
-  const [isWeChatOpen, setIsWeChatOpen] = useState(false);
-  const [activeWeChatTab, setActiveWeChatTab] = useState<WeChatTabKey>('chats');
   const isEditingValue = useDerivedValue(() => isEditing);
 
   const { width: screenWidth } = useWindowDimensions();
@@ -490,7 +500,7 @@ export default function AppleIconSort() {
 
   const widgetSize = useMemo(
     () => ({
-      height: cellSize * 2 + GRID_ROW_GAP,
+      height: cellSize * 2.3 + GRID_ROW_GAP, // 统一增加高度以完整显示四个小方块
       width: boardContentWidth
     }),
     [boardContentWidth, cellSize]
@@ -502,20 +512,21 @@ export default function AppleIconSort() {
   );
 
   const dockContentWidth = useMemo(() => {
+    // 计算最小宽度：4个图标 + 3个间距
     const minimumWidth = cellSize * DOCK_CAPACITY + DOCK_COLUMN_GAP * (DOCK_CAPACITY - 1);
-    const targetWidth = Math.round(boardContentWidth - DOCK_BACKGROUND_OVERFLOW * 2);
     
-    // Android特定修复：确保dock有足够的宽度
-    const finalWidth = Math.max(targetWidth, minimumWidth);
-    
-    // Android需要额外的宽度调整
-    return isAndroid ? finalWidth + 8 : finalWidth;
+    // Android特定修复：确保dock有足够的宽度，并考虑水平边距
+    // 直接使用最小宽度，确保所有4个图标都能水平排列
+    return isAndroid ? minimumWidth : Math.max(boardContentWidth - DOCK_BACKGROUND_OVERFLOW * 2, minimumWidth);
   }, [boardContentWidth, cellSize]);
 
   const dockHorizontalInset = useMemo(() => {
     const inset = (boardWidth - (dockContentWidth + DOCK_BACKGROUND_OVERFLOW * 2)) / 2;
+    
+    // Android增加水平边距，避免贴边
+    const finalInset = Math.max(0, Math.round(inset)) + (isAndroid ? DOCK_HORIZONTAL_MARGIN : 0);
 
-    return Math.max(0, Math.round(inset));
+    return finalInset;
   }, [boardWidth, dockContentWidth]);
 
   const gridCellStyle = useMemo<StyleProp<ViewStyle>>(
@@ -548,7 +559,17 @@ export default function AppleIconSort() {
     () => ({
       height: dockHeight,
       left: dockHorizontalInset,
-      right: dockHorizontalInset
+      right: dockHorizontalInset,
+      // Android特定修复：确保背景层不会产生额外的视觉效果
+      ...isAndroid && { 
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderWidth: 0,
+        borderColor: 'transparent'
+      },
+      // iOS特定修复：降低背景透明度使颜色更浅
+      ...!isAndroid && {
+        backgroundColor: 'rgba(255, 255, 255, 0.18)'
+      }
     }),
     [dockHeight, dockHorizontalInset]
   );
@@ -561,7 +582,12 @@ export default function AppleIconSort() {
       width: boardWidth,
       // Android特定修复：确保dock区域有正确的对齐
       alignItems: isAndroid ? 'center' : 'stretch',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      // Android特定修复：确保dock区域完全透明
+      backgroundColor: 'transparent',
+      // Android特定修复：确保没有边框
+      borderWidth: 0,
+      borderColor: 'transparent'
     }),
     [boardWidth, dockHeight, dockHorizontalInset]
   );
@@ -598,13 +624,13 @@ export default function AppleIconSort() {
       }
       void Haptics.selectionAsync();
       if (item.label === 'WeChat') {
-        setActiveWeChatTab('chats');
-        setIsWeChatOpen(true);
+        // 使用router跳转到微信页面
+        router.push('/wechat');
         return;
       }
       Alert.alert(item.label, '该应用稍后提供完整体验。');
     },
-    [isEditing, setActiveWeChatTab, setIsWeChatOpen]
+    [isEditing]
   );
 
   // 处理天气小组件点击
@@ -1172,8 +1198,8 @@ export default function AppleIconSort() {
   );
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
-      <StatusBar hidden={isEditing || isWeChatOpen} style="light" />
+    <SafeAreaView edges={isAndroid ? ['top', 'left', 'right'] : ['top', 'left', 'right']} style={styles.container}>
+      <StatusBar hidden={isEditing} style="light" backgroundColor="transparent" translucent={true} />
       {/* Done按钮放在状态栏右上角 */}
       {isEditing && (
         <AnimatedPressable
@@ -1253,8 +1279,10 @@ export default function AppleIconSort() {
             style={[
               styles.dockSection,
               {
-                paddingBottom: insets.bottom + DOCK_BOTTOM_EXTRA_PADDING,
-                paddingTop: DOCK_TOP_GAP
+                paddingBottom: isAndroid ? insets.bottom + DOCK_BOTTOM_EXTRA_PADDING : insets.bottom + DOCK_BOTTOM_EXTRA_PADDING,
+                paddingTop: DOCK_TOP_GAP,
+                // iOS特定修复：确保底部没有额外空白
+                marginBottom: isIOS ? 0 : undefined
               }
             ]}>
             <View style={{ width: boardWidth }}>
@@ -1262,8 +1290,10 @@ export default function AppleIconSort() {
                 pointerEvents='none'
                 style={[
                   styles.dockBackground,
-                  dockBackgroundStyle
-                ]}
+                  dockBackgroundStyle,
+                  // Android特定修复：确保背景层在正确的层级
+                  isAndroid && { zIndex: 1 }
+                ].filter(Boolean)}
               />
               <Sortable.BaseZone
                 onItemDrop={() => handleZoneDrop('dock')}
@@ -1271,13 +1301,18 @@ export default function AppleIconSort() {
                 onItemLeave={() => handleZoneLeave('dock')}
                 style={[
                   styles.dockZone,
-                  dockZoneStyle
-                ]}>
+                  dockZoneStyle,
+                  // Android特定修复：确保dock内容在背景之上
+                  isAndroid && { zIndex: 2 }
+                ].filter(Boolean)}
+              >
                 <View style={{ 
                   width: dockContentWidth,
                   // Android特定修复：确保dock项正确对齐
-                  justifyContent: isAndroid ? 'center' : 'flex-start',
-                  alignItems: 'center'
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  // Android特定修复：确保所有图标水平排列
+                  flexDirection: 'row'
                 }}>
                   <Sortable.Flex
                     alignItems='center'
@@ -1286,7 +1321,9 @@ export default function AppleIconSort() {
                     inactiveItemOpacity={1}
                     onDragEnd={handleDockDragEnd}
                     onDragStart={handleDockDragStart}
-                    rowGap={0}>
+                    rowGap={0}
+                    // Android特定修复：确保不会换行
+                    flexWrap='nowrap'>
                   {dockItems.map(item => (
                     <View key={item.label} style={dockCellStyle}>
                       <Icon
@@ -1306,13 +1343,6 @@ export default function AppleIconSort() {
           </View>
         </View>
       </Sortable.MultiZoneProvider>
-      {isWeChatOpen && (
-        <WeChatApp
-          activeTab={activeWeChatTab}
-          onClose={() => setIsWeChatOpen(false)}
-          onTabChange={setActiveWeChatTab}
-        />
-      )}
     </SafeAreaView>
   );
 }
@@ -1411,7 +1441,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     overflow: 'hidden',
-    padding: 20,
+    padding: 18, // 统一减少内边距以节省空间
     // Android兼容性修复
     elevation: 0
   },
@@ -1422,13 +1452,15 @@ const styles = StyleSheet.create({
   },
   widgetLocation: {
     color: '#f6f7fb',
-    fontSize: 20,
-    fontWeight: '700'
+    fontSize: getFontSize(20),
+    fontWeight: '700',
+    fontFamily: isAndroid ? FONT_FAMILY.android : undefined
   },
   widgetCondition: {
     color: 'rgba(235, 239, 255, 0.7)',
-    fontSize: 14,
-    marginTop: 4
+    fontSize: getFontSize(14),
+    marginTop: 4,
+    fontFamily: isAndroid ? FONT_FAMILY.android : undefined
   },
   widgetBadge: {
     alignItems: 'center',
@@ -1439,7 +1471,8 @@ const styles = StyleSheet.create({
     width: 44
   },
   widgetBadgeText: {
-    fontSize: 26
+    fontSize: getFontSize(26),
+    fontFamily: isAndroid ? FONT_FAMILY.android : undefined
   },
   widgetTemperatureRow: {
     alignItems: 'flex-start',
@@ -1450,9 +1483,9 @@ const styles = StyleSheet.create({
   widgetRangeSection: {
     position: 'absolute',
     top: Platform.OS === 'android' ? 25 : 20,
-    right: Platform.OS === 'android' ? 85 : 80,
-    bottom: Platform.OS === 'android' ? 65 : 60,
-    width: Platform.OS === 'android' ? 95 : 100,
+    right: Platform.OS === 'android' ? 85 : 90, // iOS向左移动更多，避免与预报小方块重叠
+    bottom: Platform.OS === 'android' ? 65 : 70, // iOS增加底部边距，避免与预报小方块重叠
+    width: Platform.OS === 'android' ? 95 : 85, // iOS减小宽度
     justifyContent: 'center',
     alignItems: 'center',
     // Android兼容性修复
@@ -1461,18 +1494,19 @@ const styles = StyleSheet.create({
   },
   widgetTemperature: {
     color: '#ffffff',
-    fontSize: 56,
+    fontSize: getFontSize(50), // 统一减小字体大小以节省空间
     fontWeight: '700',
     letterSpacing: 1,
-    marginLeft: 16
+    marginLeft: 16,
+    fontFamily: isAndroid ? FONT_FAMILY.android : undefined
   },
   widgetRangeCard: {
     alignItems: 'center',
     backgroundColor: 'rgba(12, 16, 34, 0.4)',
     borderRadius: 16,
     gap: 3,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingHorizontal: Platform.OS === 'android' ? 16 : 12, // iOS减小水平内边距
+    paddingVertical: Platform.OS === 'android' ? 20 : 16, // iOS减小垂直内边距
     height: '100%',
     width: '100%',
     justifyContent: 'center',
@@ -1489,14 +1523,16 @@ const styles = StyleSheet.create({
   },
   widgetRangeLabel: {
     color: 'rgba(226, 232, 255, 0.7)',
-    fontSize: 12,
-    fontWeight: '600'
+    fontSize: getFontSize(12),
+    fontWeight: '600',
+    fontFamily: isAndroid ? FONT_FAMILY.android : undefined
   },
   widgetRangeValue: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: getFontSize(16),
     fontWeight: '700',
-    lineHeight: 20
+    lineHeight: 20,
+    fontFamily: isAndroid ? FONT_FAMILY.android : undefined
   },
   widgetRangeDivider: {
     alignSelf: 'stretch',
@@ -1514,7 +1550,8 @@ const styles = StyleSheet.create({
     columnGap: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 0
+    marginTop: Platform.OS === 'android' ? 8 : 24, // iOS平台增加顶部间距避免重叠，Android保持原设置
+    marginBottom: 8 // 保持底部间距
   },
   widgetForecastItem: {
     alignItems: 'center',
@@ -1524,26 +1561,30 @@ const styles = StyleSheet.create({
   },
   widgetForecastTime: {
     color: 'rgba(226, 232, 255, 0.75)',
-    fontSize: 12,
-    marginBottom: 6
+    fontSize: getFontSize(12),
+    marginBottom: 6,
+    fontFamily: isAndroid ? FONT_FAMILY.android : undefined
   },
   widgetForecastTemp: {
     color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700'
+    fontSize: getFontSize(18),
+    fontWeight: '700',
+    fontFamily: isAndroid ? FONT_FAMILY.android : undefined
   },
   dockBackground: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: isAndroid ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.18)', // iOS降低透明度使颜色更浅
     borderCurve: 'continuous',
     borderRadius: isAndroid ? 48 : 44, // Android使用更大的圆角
     bottom: 0,
     position: 'absolute',
     shadowColor: '#000',
-    shadowOffset: { height: isAndroid ? 16 : 12, width: 0 }, // Android使用更深的阴影
-    shadowOpacity: isAndroid ? 0.2 : 0.15, // Android使用更高的阴影透明度
-    shadowRadius: isAndroid ? 22 : 18, // Android使用更大的阴影半径
-    // Android兼容性修复
-    elevation: isAndroid ? 8 : 0
+    shadowOffset: { height: isAndroid ? 8 : 12, width: 0 }, // Android减少阴影偏移
+    shadowOpacity: isAndroid ? 0.1 : 0.15, // Android减少阴影透明度
+    shadowRadius: isAndroid ? 12 : 18, // Android减少阴影半径
+    // Android兼容性修复 - 移除elevation避免双重阴影
+    elevation: 0,
+    // Android特定修复：确保背景不会重复显示
+    overflow: 'hidden'
   },
   dockSection: {
     alignItems: 'center',
@@ -1554,7 +1595,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 0,
     // Android特定修复：确保dock栏内容正确对齐
-    alignItems: isAndroid ? 'center' : 'stretch'
+    alignItems: isAndroid ? 'center' : 'stretch',
+    // Android特定修复：确保dock区域完全透明
+    backgroundColor: 'transparent'
   },
   zoneContainer: {
     flex: 1

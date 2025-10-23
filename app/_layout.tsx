@@ -16,7 +16,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
-        <StatusBar style="auto" backgroundColor="transparent" translucent={true} />
+        <StatusBar style="auto" />
       </ThemeProvider>
     </GestureHandlerRootView>
   );

@@ -2,18 +2,19 @@ import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import type { ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
-import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
-    Easing,
-    FadeIn,
-    FadeOut,
-    type SharedValue,
-    useAnimatedStyle,
-    useDerivedValue,
-    withDelay,
-    withRepeat,
-    withSequence,
-    withTiming
+  Easing,
+  FadeIn,
+  FadeOut,
+  type SharedValue,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Sortable, {
@@ -68,6 +69,7 @@ const APP_ICONS: AppIconItem[] = [
   { image: require('../../assets/images/app-icons/instagram.png'), kind: 'app', label: 'Instagram' },
   { image: require('../../assets/images/app-icons/twitter.png'), kind: 'app', label: 'Twitter' },
   { image: require('../../assets/images/app-icons/whatsapp.png'), kind: 'app', label: 'WhatsApp' },
+  { image: require('../../assets/images/app-icons/wechat.png'), kind: 'app', label: 'WeChat' },
   { image: require('../../assets/images/app-icons/gmail.png'), kind: 'app', label: 'Gmail' },
   { image: require('../../assets/images/app-icons/google.png'), kind: 'app', label: 'Google' },
   { image: require('../../assets/images/app-icons/youtube.png'), kind: 'app', label: 'YouTube' },
@@ -125,6 +127,7 @@ type IconProps = {
   isEditing: SharedValue<boolean>;
   item: AppIconItem;
   onDelete?: (item: AppIconItem) => void;
+  onPress?: (item: AppIconItem) => void;
   showDelete?: boolean;
   showLabel?: boolean;
   size: number;
@@ -135,6 +138,7 @@ const Icon = memo(function Icon({
   isEditing,
   item,
   onDelete,
+  onPress,
   showDelete = true,
   showLabel = true,
   size
@@ -156,8 +160,19 @@ const Icon = memo(function Icon({
       : withTiming(0, shakeTimingConfig)
   );
 
-  const animatedShakeStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${shakeProgress.value}deg` }]
+  const pressScale = useSharedValue(1);
+
+  useDerivedValue(() => {
+    if (isEditing.value || isActive.value) {
+      pressScale.value = withTiming(1, shakeTimingConfig);
+    }
+  });
+
+  const animatedIconStyle = useAnimatedStyle(() => ({
+    transform: [
+      { rotate: `${shakeProgress.value}deg` },
+      { scale: isActive.value ? 1 : pressScale.value }
+    ]
   }));
 
   const animatedDeleteButtonStyle = useAnimatedStyle(() =>
@@ -172,11 +187,32 @@ const Icon = memo(function Icon({
   const imagePadding = Math.min(iconContainerSize / 2, ICON_IMAGE_INSET);
   const imageSize = Math.max(0, iconContainerSize - imagePadding * 2);
 
+  const handlePressIn = () => {
+    if (isEditing.value || isActive.value) {
+      return;
+    }
+    pressScale.value = withTiming(0.92, { duration: 120, easing: Easing.out(Easing.ease) });
+  };
+
+  const handlePressOut = () => {
+    pressScale.value = withTiming(1, { duration: 160, easing: Easing.out(Easing.ease) });
+  };
+
+  const handlePress = () => {
+    if (isEditing.value || !onPress) {
+      return;
+    }
+    onPress(item);
+  };
+
   return (
-    <Animated.View
+    <AnimatedPressable
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       style={[
         styles.icon,
-        animatedShakeStyle,
+        animatedIconStyle,
         {
           paddingBottom: showLabel ? 0 : frameInset,
           paddingHorizontal: frameInset,
@@ -213,7 +249,7 @@ const Icon = memo(function Icon({
           <Text style={styles.deleteButtonText}>-</Text>
         </AnimatedPressable>
       )}
-    </Animated.View>
+    </AnimatedPressable>
   );
 });
 
@@ -435,6 +471,17 @@ export default function AppleIconSort() {
     setDockItems(prevItems => prevItems.filter(candidate => candidate.label !== item.label));
   }, []);
 
+  const handleIconPress = useCallback(
+    (item: AppIconItem) => {
+      if (isEditing) {
+        return;
+      }
+      Haptics.selectionAsync();
+      Alert.alert(item.label, '该应用稍后提供完整体验。');
+    },
+    [isEditing]
+  );
+
   const activeItemRef = useRef<BoardItem | null>(null);
   const activeOriginRef = useRef<DragOrigin | null>(null);
   const dropZoneRef = useRef<DropZone | null>(null);
@@ -507,16 +554,19 @@ export default function AppleIconSort() {
 
   const handleGridDragEnd = useCallback(
     ({ order, toIndex }: SortableFlexDragEndParams) => {
-      const dropZone = dropZoneRef.current;
       const activeItem = activeItemRef.current;
       const activeOrigin = activeOriginRef.current;
       const originIndex = activeIndexRef.current;
+      const rawDropZone = dropZoneRef.current;
+      const resolvedDropZone =
+        rawDropZone ??
+        (activeOrigin === 'dock' && Number.isFinite(toIndex) ? 'grid' : rawDropZone);
       let displacedDockItem: AppIconItem | null = null;
 
       setGridItems(prevItems => {
         const reordered = order<BoardItem>(prevItems);
 
-        if (dropZone !== 'grid') {
+        if (resolvedDropZone !== 'grid') {
           return reordered;
         }
 
@@ -558,7 +608,12 @@ export default function AppleIconSort() {
         return reordered;
       });
 
-      if (dropZone === 'grid' && activeItem && activeOrigin === 'dock' && activeItem.kind === 'app') {
+      if (
+        resolvedDropZone === 'grid' &&
+        activeItem &&
+        activeOrigin === 'dock' &&
+        activeItem.kind === 'app'
+      ) {
         setDockItems(prevDock => {
           let nextDock = prevDock.filter(item => item.label !== activeItem.label);
           if (displacedDockItem) {
@@ -587,9 +642,9 @@ export default function AppleIconSort() {
         return;
       }
 
-      if (dropZone === 'grid') {
+      if (resolvedDropZone === 'grid') {
         resetActiveTracking();
-      } else if (!dropZone) {
+      } else if (!resolvedDropZone) {
         resetActiveTracking();
       }
     },
@@ -598,16 +653,19 @@ export default function AppleIconSort() {
 
   const handleDockDragEnd = useCallback(
     ({ order, toIndex }: SortableFlexDragEndParams) => {
-      const dropZone = dropZoneRef.current;
       const activeItem = activeItemRef.current;
       const activeOrigin = activeOriginRef.current;
       const originIndex = activeIndexRef.current;
+      const rawDropZone = dropZoneRef.current;
+      const resolvedDropZone =
+        rawDropZone ??
+        (activeOrigin === 'grid' && Number.isFinite(toIndex) ? 'dock' : rawDropZone);
       let displacedGridItem: AppIconItem | null = null;
 
       setDockItems(prevItems => {
         const reordered = order<AppIconItem>(prevItems);
 
-        if (dropZone !== 'dock') {
+        if (resolvedDropZone !== 'dock') {
           return reordered;
         }
 
@@ -646,7 +704,12 @@ export default function AppleIconSort() {
         return reordered;
       });
 
-      if (dropZone === 'dock' && activeItem && activeOrigin === 'grid' && activeItem.kind === 'app') {
+      if (
+        resolvedDropZone === 'dock' &&
+        activeItem &&
+        activeOrigin === 'grid' &&
+        activeItem.kind === 'app'
+      ) {
         setGridItems(prevGrid => {
           let nextGrid = prevGrid.filter(
             candidate => getBoardItemKey(candidate) !== getBoardItemKey(activeItem)
@@ -668,9 +731,9 @@ export default function AppleIconSort() {
         return;
       }
 
-      if (dropZone === 'dock') {
+      if (resolvedDropZone === 'dock') {
         resetActiveTracking();
-      } else if (!dropZone) {
+      } else if (!resolvedDropZone) {
         resetActiveTracking();
       }
     },
@@ -741,6 +804,7 @@ export default function AppleIconSort() {
                           isEditing={isEditingValue}
                           item={item}
                           onDelete={handleAppIconDelete}
+                          onPress={handleIconPress}
                           showDelete
                           size={cellSize}
                         />
@@ -791,6 +855,7 @@ export default function AppleIconSort() {
                         isEditing={isEditingValue}
                         item={item}
                         onDelete={handleDockItemDelete}
+                        onPress={handleIconPress}
                         showLabel={false}
                         size={cellSize}
                       />

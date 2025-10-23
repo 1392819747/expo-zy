@@ -88,6 +88,7 @@ const APP_ICONS: AppIconItem[] = [
   { image: require('../../assets/images/app-icons/twitter.png'), kind: 'app', label: 'Twitter' },
   { image: require('../../assets/images/app-icons/whatsapp.png'), kind: 'app', label: 'WhatsApp' },
   { image: require('../../assets/images/app-icons/wechat.png'), kind: 'app', label: 'WeChat' },
+  { image: require('../../assets/images/app-icons/api-settings.png'), kind: 'app', label: 'API Settings' },
   { image: require('../../assets/images/app-icons/gmail.png'), kind: 'app', label: 'Gmail' },
   { image: require('../../assets/images/app-icons/google.png'), kind: 'app', label: 'Google' },
   { image: require('../../assets/images/app-icons/youtube.png'), kind: 'app', label: 'YouTube' },
@@ -624,8 +625,11 @@ export default function AppleIconSort() {
       }
       void Haptics.selectionAsync();
       if (item.label === 'WeChat') {
-        // 使用router跳转到微信页面
         router.push('/wechat');
+        return;
+      }
+      if (item.label === 'API Settings') {
+        router.push('/api-settings');
         return;
       }
       Alert.alert(item.label, '该应用稍后提供完整体验。');

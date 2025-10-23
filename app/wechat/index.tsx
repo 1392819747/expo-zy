@@ -1,12 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, StatusBar, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 export default function WeChatScreen() {
   const [activeTab, setActiveTab] = useState('chats');
-  
+  const router = useRouter();
+
+  type ChatListItem = {
+    avatar: string;
+    highlightColor?: string;
+    id: number;
+    isOfficial: boolean;
+    message: string;
+    name: string;
+    route?: string;
+    tag?: string;
+    time: string;
+    unread: number;
+  };
+
   // 聊天列表数据
-  const chatList = [
+  const chatList: ChatListItem[] = [
     {
       id: 1,
       name: '文件传输助手',
@@ -51,9 +66,27 @@ export default function WeChatScreen() {
       time: '星期二',
       unread: 1,
       isOfficial: true
+    },
+    {
+      id: 6,
+      name: 'AI 酒馆',
+      avatar: 'AI',
+      message: '随时召唤你的角色伙伴聊天',
+      time: '刚刚',
+      unread: 3,
+      isOfficial: true,
+      route: '/wechat/ai-chat',
+      tag: 'AI 助手',
+      highlightColor: '#4B9BFF'
     }
   ];
-  
+
+  const handleChatPress = (chat: ChatListItem) => {
+    if (chat.route) {
+      router.push(chat.route);
+    }
+  };
+
   // 通讯录数据
   const contactsData = [
     {
@@ -131,7 +164,7 @@ export default function WeChatScreen() {
     return (
       <ScrollView style={styles.scrollView}>
         {chatList.map(chat => (
-          <TouchableOpacity key={chat.id} style={styles.chatItem}>
+          <TouchableOpacity key={chat.id} style={styles.chatItem} onPress={() => handleChatPress(chat)}>
             <View style={styles.avatarContainer}>
               <View style={[styles.avatar, { backgroundColor: chat.isOfficial ? '#07C160' : '#ddd' }]}>
                 <Text style={styles.avatarText}>{chat.avatar}</Text>
@@ -139,7 +172,17 @@ export default function WeChatScreen() {
             </View>
             <View style={styles.chatContent}>
               <View style={styles.chatHeader}>
-                <Text style={styles.chatName}>{chat.name}</Text>
+                <View style={styles.chatTitleRow}>
+                  <Text style={styles.chatName}>{chat.name}</Text>
+                  {chat.tag ? (
+                    <View style={[styles.chatTag, { backgroundColor: chat.highlightColor ?? '#07C160' }]}>
+                      <Text style={styles.chatTagText}>{chat.tag}</Text>
+                    </View>
+                  ) : null}
+                  {chat.isOfficial ? (
+                    <Ionicons name="shield-checkmark" size={14} color="#07C160" style={styles.officialIcon} />
+                  ) : null}
+                </View>
                 <Text style={styles.chatTime}>{chat.time}</Text>
               </View>
               <View style={styles.chatMessageRow}>
@@ -277,7 +320,7 @@ export default function WeChatScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ededed" />
-      
+
       {/* 顶部导航栏 */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>微信</Text>
@@ -285,7 +328,7 @@ export default function WeChatScreen() {
           <TouchableOpacity style={styles.headerButton}>
             <Ionicons name="search" size={24} color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/wechat/ai-chat')}>
             <Ionicons name="add-circle" size={24} color="#000" />
           </TouchableOpacity>
         </View>
@@ -411,10 +454,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
+  chatTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   chatName: {
     fontSize: 16,
     fontWeight: '500',
     color: '#000',
+  },
+  chatTag: {
+    marginLeft: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  chatTagText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  officialIcon: {
+    marginLeft: 6,
   },
   chatTime: {
     fontSize: 12,

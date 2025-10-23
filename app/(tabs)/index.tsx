@@ -418,6 +418,7 @@ export default function AppleIconSort() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
+  const statusBarStyle: 'light' = 'light';
 
   const backgroundGradient = useMemo(
     () =>
@@ -457,7 +458,7 @@ export default function AppleIconSort() {
 
   const widgetSize = useMemo(
     () => ({
-      height: cellSize * 2 + GRID_ROW_GAP,
+      height: cellSize * 2 + GRID_ROW_GAP + GRID_LABEL_HEIGHT * 2,
       width: boardContentWidth
     }),
     [boardContentWidth, cellSize]
@@ -469,11 +470,12 @@ export default function AppleIconSort() {
   );
 
   const dockContentWidth = useMemo(() => {
-    const minimumWidth = cellSize * DOCK_CAPACITY + DOCK_COLUMN_GAP * (DOCK_CAPACITY - 1);
-    const targetWidth = Math.round(boardContentWidth - DOCK_BACKGROUND_OVERFLOW * 2);
+    const iconCount = dockItems.length === 0 ? DOCK_CAPACITY : dockItems.length;
+    const occupiedWidth =
+      iconCount * cellSize + Math.max(0, iconCount - 1) * DOCK_COLUMN_GAP;
 
-    return Math.max(targetWidth, minimumWidth);
-  }, [boardContentWidth, cellSize]);
+    return Math.min(occupiedWidth, boardContentWidth);
+  }, [boardContentWidth, cellSize, dockItems.length]);
 
   const dockHorizontalInset = useMemo(() => {
     const inset = (boardWidth - (dockContentWidth + DOCK_BACKGROUND_OVERFLOW * 2)) / 2;
@@ -1106,7 +1108,7 @@ export default function AppleIconSort() {
     <View style={styles.container}>
       <LinearGradient colors={backgroundGradient} style={StyleSheet.absoluteFill} />
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-        <StatusBar hidden={isEditing || isWeChatOpen} style={isDarkMode ? 'light' : 'dark'} />
+        <StatusBar hidden={isEditing || isWeChatOpen} style={statusBarStyle} />
       {/* Done按钮放在状态栏右上角 */}
       {isEditing && (
         <AnimatedPressable

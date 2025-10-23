@@ -95,6 +95,8 @@ const GRID_HORIZONTAL_PADDING = 22;
 const GRID_VERTICAL_PADDING = 14;
 const DOCK_CAPACITY = 4;
 const MAX_BOARD_WIDTH = 430;
+const GRID_CELL_MIN_SIZE = 60;
+const GRID_CELL_MAX_SIZE = 86;
 
 const getBoardItemKey = (item: BoardItem) =>
   item.kind === 'weather' ? item.id : item.label;
@@ -105,6 +107,7 @@ type IconProps = {
   item: AppIconItem;
   onDelete?: (item: AppIconItem) => void;
   showDelete?: boolean;
+  showLabel?: boolean;
   size: number;
 };
 
@@ -114,6 +117,7 @@ const Icon = memo(function Icon({
   item,
   onDelete,
   showDelete = true,
+  showLabel = true,
   size
 }: IconProps) {
   const { isActive } = useItemContext();
@@ -169,9 +173,11 @@ const Icon = memo(function Icon({
           style={{ height: imageSize, width: imageSize }}
         />
       </View>
-      <Text numberOfLines={1} style={styles.text}>
-        {item.label}
-      </Text>
+      {showLabel && (
+        <Text numberOfLines={1} style={styles.text}>
+          {item.label}
+        </Text>
+      )}
       {showDelete && onDelete && (
         <AnimatedPressable
           style={[styles.deleteButton, animatedDeleteButtonStyle]}
@@ -279,22 +285,31 @@ export default function AppleIconSort() {
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
-  const boardWidth = useMemo(
+  const availableBoardWidth = useMemo(
     () => Math.min(screenWidth, MAX_BOARD_WIDTH),
     [screenWidth]
   );
 
-  const boardContentWidth = useMemo(
-    () => boardWidth - GRID_HORIZONTAL_PADDING * 2,
-    [boardWidth]
-  );
-
   const cellSize = useMemo(() => {
     const computedCellSize =
-      (boardContentWidth - GRID_COLUMN_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
+      (availableBoardWidth - GRID_HORIZONTAL_PADDING * 2 - GRID_COLUMN_GAP * (GRID_COLUMNS - 1)) /
+      GRID_COLUMNS;
 
-    return Math.max(54, Math.min(64, computedCellSize));
-  }, [boardContentWidth]);
+    return Math.max(
+      GRID_CELL_MIN_SIZE,
+      Math.min(GRID_CELL_MAX_SIZE, computedCellSize)
+    );
+  }, [availableBoardWidth]);
+
+  const boardContentWidth = useMemo(
+    () => cellSize * GRID_COLUMNS + GRID_COLUMN_GAP * (GRID_COLUMNS - 1),
+    [cellSize]
+  );
+
+  const boardWidth = useMemo(
+    () => boardContentWidth + GRID_HORIZONTAL_PADDING * 2,
+    [boardContentWidth]
+  );
 
   const widgetSize = useMemo(
     () => ({
@@ -490,7 +505,7 @@ export default function AppleIconSort() {
                   onDragEnd={handleGridDragEnd}
                   onDragStart={handleGridDragStart}
                   rowGap={GRID_ROW_GAP}
-                  style={{ paddingBottom: GRID_VERTICAL_PADDING }}>
+                  style={{ paddingBottom: GRID_VERTICAL_PADDING, width: boardContentWidth }}>
                   {gridItems.map(item => {
                     const key = getBoardItemKey(item);
 
@@ -531,7 +546,7 @@ export default function AppleIconSort() {
             style={[
               styles.dockSection,
               {
-                paddingBottom: insets.bottom + 8,
+                paddingBottom: insets.bottom + 2,
                 paddingTop: GRID_VERTICAL_PADDING
               }
             ]}>
@@ -569,8 +584,9 @@ export default function AppleIconSort() {
                       <Icon
                         isEditing={isEditingValue}
                         item={item}
-                        size={cellSize}
                         showDelete={false}
+                        showLabel={false}
+                        size={cellSize}
                       />
                     </View>
                   ))}

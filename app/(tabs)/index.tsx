@@ -17,7 +17,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Sortable, {
-  MultiZoneProvider,
   type SortableFlexDragEndParams,
   useItemContext
 } from 'react-native-sortables';
@@ -466,7 +465,7 @@ export default function AppleIconSort() {
           <Text style={styles.buttonText}>Done</Text>
         </AnimatedPressable>
       )}
-      <MultiZoneProvider>
+      <Sortable.MultiZoneProvider>
         <View style={styles.boardRoot}>
           <View style={styles.gridSection}>
             <Sortable.BaseZone
@@ -580,7 +579,7 @@ export default function AppleIconSort() {
             </View>
           </View>
         </View>
-      </MultiZoneProvider>
+      </Sortable.MultiZoneProvider>
     </SafeAreaView>
   );
 }

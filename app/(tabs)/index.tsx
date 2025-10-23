@@ -133,6 +133,9 @@ const DOCK_BACKGROUND_OVERFLOW = 12;
 const DOCK_BOTTOM_EXTRA_PADDING = 8;
 const DOCK_COLUMN_GAP = 14;
 
+const getDockBackgroundWidth = (contentWidth: number) =>
+  contentWidth + DOCK_BACKGROUND_OVERFLOW * 2;
+
 const getBoardItemKey = (item: BoardItem) =>
   item.kind === 'weather' ? item.id : item.label;
 
@@ -335,13 +338,13 @@ const WeatherWidget = memo(function WeatherWidget({
       style={[
         styles.widgetWrapper,
         animatedShakeStyle,
-        { height: size.height, width: size.width }
+        { minHeight: size.height, width: size.width }
       ]}>
       <LinearGradient
         colors={widgetGradient}
         end={{ x: 1, y: 1 }}
         start={{ x: 0, y: 0 }}
-        style={[styles.widgetContainer, { height: size.height, width: size.width }]}>
+        style={[styles.widgetContainer, { minHeight: size.height, width: size.width }]}>
         <View style={styles.widgetHeader}>
           <View>
             <Text style={styles.widgetLocation}>{item.location}</Text>
@@ -475,11 +478,16 @@ export default function AppleIconSort() {
     return Math.max(targetWidth, minimumWidth);
   }, [boardContentWidth, cellSize]);
 
+  const dockBackgroundWidth = useMemo(
+    () => getDockBackgroundWidth(dockContentWidth),
+    [dockContentWidth]
+  );
+
   const dockHorizontalInset = useMemo(() => {
-    const inset = (boardWidth - (dockContentWidth + DOCK_BACKGROUND_OVERFLOW * 2)) / 2;
+    const inset = (boardWidth - dockBackgroundWidth) / 2;
 
     return Math.max(0, Math.round(inset));
-  }, [boardWidth, dockContentWidth]);
+  }, [boardWidth, dockBackgroundWidth]);
 
   const gridCellStyle = useMemo<StyleProp<ViewStyle>>(
     () => ({
@@ -509,19 +517,20 @@ export default function AppleIconSort() {
     () => ({
       height: dockHeight,
       left: dockHorizontalInset,
-      right: dockHorizontalInset
+      width: dockBackgroundWidth
     }),
-    [dockHeight, dockHorizontalInset]
+    [dockBackgroundWidth, dockHeight, dockHorizontalInset]
   );
 
   const dockZoneStyle = useMemo<StyleProp<ViewStyle>>(
     () => ({
+      alignSelf: 'center',
       height: dockHeight,
-      paddingHorizontal: dockHorizontalInset + DOCK_BACKGROUND_OVERFLOW,
+      paddingHorizontal: DOCK_BACKGROUND_OVERFLOW,
       paddingVertical: DOCK_VERTICAL_PADDING,
-      width: boardWidth
+      width: dockBackgroundWidth
     }),
-    [boardWidth, dockHeight, dockHorizontalInset]
+    [dockBackgroundWidth, dockHeight]
   );
 
   const handleBoardItemDelete = useCallback((item: HomeItem) => {
@@ -1211,10 +1220,11 @@ export default function AppleIconSort() {
                   columnGap={DOCK_COLUMN_GAP}
                   flexDirection='row'
                   inactiveItemOpacity={1}
+                  justifyContent='center'
                   onDragEnd={handleDockDragEnd}
                   onDragStart={handleDockDragStart}
                   rowGap={0}
-                  style={{ width: dockContentWidth }}>
+                  style={{ alignSelf: 'center', width: dockContentWidth }}>
                   {dockItems.map(item => (
                     <View key={item.label} style={dockCellStyle}>
                       <Icon

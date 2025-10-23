@@ -107,6 +107,7 @@ const GRID_ROW_GAP = 18;
 const GRID_HORIZONTAL_PADDING = 18;
 const GRID_VERTICAL_PADDING = 14;
 const DOCK_CAPACITY = 4;
+const GRID_ITEM_LIMIT = 20; // 设置桌面最大应用数量
 const MAX_BOARD_WIDTH = 430;
 const GRID_CELL_MIN_SIZE = 70;
 const GRID_CELL_MAX_SIZE = 82;
@@ -496,21 +497,38 @@ export default function AppleIconSort() {
 
   const captureActiveItem = useCallback(
     (origin: DragOrigin, key: string) => {
+      console.log('captureActiveItem called with origin:', origin, 'key:', key);
       activeOriginRef.current = origin;
       const sourceItems = origin === 'grid' ? gridItems : dockItems;
+      console.log('Source items:', sourceItems.map(item => item.label || item.id));
+      
+      // 去掉key前面的点，这是拖拽库添加的前缀
+      const cleanKey = key.startsWith('.$') ? key.substring(2) : key;
+      console.log('Clean key:', cleanKey);
+      
       const foundIndex = sourceItems.findIndex(
-        item => getBoardItemKey(item as BoardItem) === key
+        item => getBoardItemKey(item as BoardItem) === cleanKey
       );
+      console.log('Found index:', foundIndex);
+      
       activeIndexRef.current = foundIndex >= 0 ? foundIndex : null;
       const foundItem = foundIndex >= 0 ? (sourceItems[foundIndex] as BoardItem) : null;
+      
       if (!foundItem) {
+        console.log('No item found, setting activeItemRef to null');
         activeItemRef.current = null;
         return;
       }
+      
       if (origin === 'dock') {
-        activeItemRef.current = { ...createBoardItemFromApp(foundItem as AppIconItem) };
+        console.log('Creating board item from dock item:', foundItem.label);
+        const boardItem = createBoardItemFromApp(foundItem as AppIconItem);
+        console.log('Created board item:', boardItem);
+        activeItemRef.current = boardItem;
         return;
       }
+      
+      console.log('Using grid item directly:', foundItem.label || foundItem.id);
       activeItemRef.current = { ...(foundItem as BoardItem) };
     },
     [dockItems, gridItems]
@@ -527,8 +545,112 @@ export default function AppleIconSort() {
   }, []);
 
   const handleZoneDrop = useCallback((zone: DropZone) => {
+    console.log('handleZoneDrop called with zone:', zone);
+    console.log('activeItem:', activeItemRef.current?.label || activeItemRef.current?.id);
+    console.log('activeOrigin:', activeOriginRef.current);
+    
+    // 设置dropZoneRef，以便handleGridDragEnd和handleDockDragEnd可以使用
     dropZoneRef.current = zone;
-  }, []);
+    
+    // 如果有活跃的拖拽项，直接处理区域间的拖拽
+    if (activeItemRef.current && activeOriginRef.current) {
+      const activeItem = activeItemRef.current;
+      const activeOrigin = activeOriginRef.current;
+      console.log('处理跨区域拖拽:', activeOrigin, '->', zone);
+      
+      // 如果从dock拖拽到grid
+      if (activeOrigin === 'dock' && zone === 'grid' && activeItem.kind === 'app') {
+        console.log('处理从dock到grid的拖拽');
+        
+        // 检查grid是否已满
+        if (gridItems.length >= GRID_ITEM_LIMIT) {
+          console.log('Grid已满，无法添加');
+          resetActiveTracking();
+          return;
+        }
+        
+        // 从dock中移除该项
+        setDockItems(prev => prev.filter(item => item.label !== activeItem.label));
+        
+        // 添加到grid中
+        setGridItems(prev => [...prev, createBoardItemFromApp(activeItem)]);
+        
+        // 重置拖拽状态
+        resetActiveTracking();
+        return;
+      }
+      
+      // 如果从grid拖拽到dock
+      if (activeOrigin === 'grid' && zone === 'dock' && activeItem.kind === 'app') {
+        console.log('处理从grid到dock的拖拽');
+        console.log('activeItem详情:', activeItem);
+        
+        // 先从grid中移除该项
+        setGridItems(prev => {
+          console.log('从grid移除应用前:', prev.map(item => item.label || item.id));
+          console.log('要移除的应用:', activeItem.label || activeItem.id);
+          const nextGrid = prev.filter(item => {
+            const itemKey = getBoardItemKey(item);
+            const activeKey = getBoardItemKey(activeItem);
+            const shouldRemove = itemKey === activeKey;
+            console.log(`比较 ${itemKey} 与 ${activeKey}, 应该移除: ${shouldRemove}`);
+            return !shouldRemove;
+          });
+          console.log('从grid移除应用后:', nextGrid.map(item => item.label || item.id));
+          return nextGrid;
+        });
+        
+        // 使用setTimeout确保grid更新完成后再更新dock
+        setTimeout(() => {
+          console.log('开始更新dock');
+          // 使用函数形式获取最新的dockItems状态
+          setDockItems(prevDockItems => {
+            console.log('Dock当前数量:', prevDockItems.length, '最大容量:', DOCK_CAPACITY);
+            console.log('Dock当前应用:', prevDockItems.map(item => item.label));
+            
+            if (prevDockItems.length >= DOCK_CAPACITY) {
+              console.log('Dock已满，替换最后一个应用');
+              
+              // 获取最后一个应用
+              const lastDockItem = prevDockItems[prevDockItems.length - 1];
+              console.log('被替换的应用:', lastDockItem.label);
+              
+              // 将新应用添加到dock
+              const nextDock = [...prevDockItems];
+              nextDock[nextDock.length - 1] = createDockItemFromBoard(activeItem);
+              console.log('Dock更新前:', prevDockItems.map(item => item.label));
+              console.log('Dock更新后:', nextDock.map(item => item.label));
+              
+              // 将被替换的应用添加到grid最后
+              if (lastDockItem) {
+                setGridItems(prevGridItems => {
+                  console.log('Grid添加应用前:', prevGridItems.map(item => item.label || item.id));
+                  const nextGrid = [...prevGridItems, createBoardItemFromApp(lastDockItem)];
+                  console.log('Grid添加应用后:', nextGrid.map(item => item.label || item.id));
+                  return nextGrid;
+                });
+              }
+              
+              return nextDock;
+            } else {
+              console.log('Dock未满，直接添加');
+              // dock未满，直接添加
+              const nextDock = [...prevDockItems, createDockItemFromBoard(activeItem)];
+              console.log('Dock添加应用前:', prevDockItems.map(item => item.label));
+              console.log('Dock添加应用后:', nextDock.map(item => item.label));
+              return nextDock;
+            }
+          });
+        }, 100);
+        
+        // 重置拖拽状态
+        resetActiveTracking();
+        return;
+      }
+    } else {
+      console.log('没有活跃的拖拽项或来源');
+    }
+  }, [gridItems.length, resetActiveTracking]);
 
   const handleGridDragStart = useCallback(
     ({ key }: { key: string }) => {
@@ -554,10 +676,22 @@ export default function AppleIconSort() {
 
   const handleGridDragEnd = useCallback(
     ({ order, toIndex }: SortableFlexDragEndParams) => {
+      console.log('handleGridDragEnd called');
       const activeItem = activeItemRef.current;
       const activeOrigin = activeOriginRef.current;
       const originIndex = activeIndexRef.current;
       const rawDropZone = dropZoneRef.current;
+      
+      console.log('activeItem:', activeItem?.label || activeItem?.id);
+      console.log('activeOrigin:', activeOrigin);
+      console.log('rawDropZone:', rawDropZone);
+      
+      // 如果已经在handleZoneDrop中处理了跨区域拖拽，这里就不需要再处理
+      if (rawDropZone && activeOrigin && activeOrigin !== rawDropZone) {
+        console.log('跨区域拖拽已在handleZoneDrop中处理，跳过handleGridDragEnd');
+        return;
+      }
+      
       const resolvedDropZone =
         rawDropZone ??
         (activeOrigin === 'dock' && Number.isFinite(toIndex) ? 'grid' : rawDropZone);
@@ -642,6 +776,73 @@ export default function AppleIconSort() {
         return;
       }
 
+      // 处理从grid到dock的拖拽，如果还没有被处理
+      if (
+        activeItem &&
+        activeOrigin === 'grid' &&
+        activeItem.kind === 'app' &&
+        (rawDropZone === 'dock' || (!rawDropZone && Number.isFinite(toIndex)))
+      ) {
+        console.log('在handleGridDragEnd中处理从grid到dock的拖拽');
+        
+        // 使用函数形式获取最新的dockItems状态
+        setDockItems(prevDockItems => {
+          console.log('Dock当前数量:', prevDockItems.length, '最大容量:', DOCK_CAPACITY);
+          console.log('Dock当前应用:', prevDockItems.map(item => item.label));
+          
+          if (prevDockItems.length >= DOCK_CAPACITY) {
+            console.log('Dock已满，替换最后一个应用');
+            
+            // 获取最后一个应用
+            const lastDockItem = prevDockItems[prevDockItems.length - 1];
+            console.log('被替换的应用:', lastDockItem.label);
+            
+            // 将新应用添加到dock
+            const nextDock = [...prevDockItems];
+            nextDock[nextDock.length - 1] = createDockItemFromBoard(activeItem);
+            console.log('Dock更新前:', prevDockItems.map(item => item.label));
+            console.log('Dock更新后:', nextDock.map(item => item.label));
+            
+            // 将被替换的应用添加到grid最后
+            if (lastDockItem) {
+              setGridItems(prevGridItems => {
+                console.log('Grid添加应用前:', prevGridItems.map(item => item.label || item.id));
+                const nextGrid = [...prevGridItems, createBoardItemFromApp(lastDockItem)];
+                console.log('Grid添加应用后:', nextGrid.map(item => item.label || item.id));
+                return nextGrid;
+              });
+            }
+            
+            return nextDock;
+          } else {
+            console.log('Dock未满，直接添加');
+            // dock未满，直接添加
+            const nextDock = [...prevDockItems, createDockItemFromBoard(activeItem)];
+            console.log('Dock添加应用前:', prevDockItems.map(item => item.label));
+            console.log('Dock添加应用后:', nextDock.map(item => item.label));
+            return nextDock;
+          }
+        });
+        
+        // 从grid中移除该项
+        setGridItems(prev => {
+          console.log('从grid移除应用前:', prev.map(item => item.label || item.id));
+          console.log('要移除的应用:', activeItem.label || activeItem.id);
+          const nextGrid = prev.filter(item => {
+            const itemKey = getBoardItemKey(item);
+            const activeKey = getBoardItemKey(activeItem);
+            const shouldRemove = itemKey === activeKey;
+            console.log(`比较 ${itemKey} 与 ${activeKey}, 应该移除: ${shouldRemove}`);
+            return !shouldRemove;
+          });
+          console.log('从grid移除应用后:', nextGrid.map(item => item.label || item.id));
+          return nextGrid;
+        });
+        
+        resetActiveTracking();
+        return;
+      }
+
       if (resolvedDropZone === 'grid') {
         resetActiveTracking();
       } else if (!resolvedDropZone) {
@@ -653,10 +854,22 @@ export default function AppleIconSort() {
 
   const handleDockDragEnd = useCallback(
     ({ order, toIndex }: SortableFlexDragEndParams) => {
+      console.log('handleDockDragEnd called');
       const activeItem = activeItemRef.current;
       const activeOrigin = activeOriginRef.current;
       const originIndex = activeIndexRef.current;
       const rawDropZone = dropZoneRef.current;
+      
+      console.log('activeItem:', activeItem?.label || activeItem?.id);
+      console.log('activeOrigin:', activeOrigin);
+      console.log('rawDropZone:', rawDropZone);
+      
+      // 如果已经在handleZoneDrop中处理了跨区域拖拽，这里就不需要再处理
+      if (rawDropZone && activeOrigin && activeOrigin !== rawDropZone) {
+        console.log('跨区域拖拽已在handleZoneDrop中处理，跳过handleDockDragEnd');
+        return;
+      }
+      
       const resolvedDropZone =
         rawDropZone ??
         (activeOrigin === 'grid' && Number.isFinite(toIndex)
@@ -762,6 +975,7 @@ export default function AppleIconSort() {
           }
 
           if (next.length > 0) {
+            // 替换目标位置的应用
             const targetIndex = Math.min(maxTargetIndex, next.length - 1);
             displacedGridItem = { ...next[targetIndex] };
             next[targetIndex] = createDockItemFromBoard(activeItem);
@@ -783,10 +997,8 @@ export default function AppleIconSort() {
             candidate => getBoardItemKey(candidate) !== getBoardItemKey(activeItem)
           );
           if (displacedGridItem) {
-            const insertAt =
-              originIndex != null
-                ? Math.max(0, Math.min(originIndex, nextGrid.length))
-                : nextGrid.length;
+            // 将挤出的应用添加到grid的最后面
+            const insertAt = nextGrid.length;
             nextGrid = [
               ...nextGrid.slice(0, insertAt),
               createBoardItemFromApp(displacedGridItem),

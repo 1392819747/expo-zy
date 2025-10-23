@@ -476,7 +476,7 @@ export default function AppleIconSort() {
       if (isEditing) {
         return;
       }
-      Haptics.selectionAsync();
+      void Haptics.selectionAsync();
       Alert.alert(item.label, '该应用稍后提供完整体验。');
     },
     [isEditing]
@@ -534,7 +534,7 @@ export default function AppleIconSort() {
     ({ key }: { key: string }) => {
       captureActiveItem('grid', key);
       if (!isEditing) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         setIsEditing(true);
       }
     },
@@ -545,7 +545,7 @@ export default function AppleIconSort() {
     ({ key }: { key: string }) => {
       captureActiveItem('dock', key);
       if (!isEditing) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         setIsEditing(true);
       }
     },
@@ -659,7 +659,75 @@ export default function AppleIconSort() {
       const rawDropZone = dropZoneRef.current;
       const resolvedDropZone =
         rawDropZone ??
-        (activeOrigin === 'grid' && Number.isFinite(toIndex) ? 'dock' : rawDropZone);
+        (activeOrigin === 'grid' && Number.isFinite(toIndex)
+          ? 'dock'
+          : activeOrigin === 'dock' && Number.isFinite(toIndex)
+            ? 'grid'
+            : rawDropZone);
+
+      if (
+        resolvedDropZone === 'grid' &&
+        activeItem &&
+        activeOrigin === 'dock' &&
+        activeItem.kind === 'app'
+      ) {
+        let displacedDockItem: AppIconItem | null = null;
+
+        setGridItems(prevGrid => {
+          const alreadyInGrid = prevGrid.some(
+            candidate => getBoardItemKey(candidate) === getBoardItemKey(activeItem)
+          );
+          if (alreadyInGrid) {
+            return prevGrid;
+          }
+
+          const safeIndex = Number.isFinite(toIndex) ? Math.max(0, Math.floor(toIndex)) : prevGrid.length;
+          const clampedIndex = Math.min(safeIndex, prevGrid.length);
+          const nextGrid = [...prevGrid];
+
+          if (clampedIndex < nextGrid.length) {
+            const targetItem = nextGrid[clampedIndex];
+            if (targetItem?.kind === 'app') {
+              displacedDockItem = createDockItemFromBoard(targetItem);
+              nextGrid.splice(clampedIndex, 1);
+            }
+          }
+
+          const insertAt = Math.min(clampedIndex, nextGrid.length);
+          nextGrid.splice(insertAt, 0, createBoardItemFromApp(activeItem));
+          return nextGrid;
+        });
+
+        setDockItems(prevDock => {
+          let nextDock = prevDock.filter(item => item.label !== activeItem.label);
+
+          if (displacedDockItem) {
+            const desiredIndex =
+              originIndex != null
+                ? Math.max(0, Math.min(originIndex, nextDock.length))
+                : nextDock.length;
+
+            if (nextDock.length < DOCK_CAPACITY) {
+              nextDock = [
+                ...nextDock.slice(0, desiredIndex),
+                displacedDockItem,
+                ...nextDock.slice(desiredIndex)
+              ];
+            } else if (nextDock.length > 0) {
+              const targetIndex = Math.min(desiredIndex, nextDock.length - 1);
+              const updated = [...nextDock];
+              updated[targetIndex] = displacedDockItem;
+              nextDock = updated;
+            }
+          }
+
+          return nextDock.slice(0, DOCK_CAPACITY);
+        });
+
+        resetActiveTracking();
+        return;
+      }
+
       let displacedGridItem: AppIconItem | null = null;
 
       setDockItems(prevItems => {

@@ -133,9 +133,22 @@ const newIcon = {
 
 ## 📱 平台支持
 
-- ✅ iOS
-- ✅ Android  
-- ✅ Web
+- ✅ iOS - 完全支持，优化的iOS风格界面
+- ✅ Android - 完全支持，针对Android平台优化的界面布局
+- ✅ Web - 完全支持
+
+### 平台特定优化
+
+#### iOS平台
+- 使用iOS原生的圆角和阴影效果
+- 优化的dock栏间距和对齐
+- iOS风格的动画和交互效果
+
+#### Android平台
+- 针对Android Material Design的优化
+- 修复了dock栏第四个应用显示位置问题
+- Android特定的阴影和elevation效果
+- 优化的触摸交互和布局间距
 
 ## 🤝 贡献
 

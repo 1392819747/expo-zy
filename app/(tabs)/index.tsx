@@ -71,11 +71,16 @@ const createBoardItemFromApp = (item: AppIconItem): BoardItem => ({
   id: item.label
 });
 
-const createDockItemFromBoard = (item: BoardItem): AppIconItem => ({
-  image: item.image,
-  kind: 'app',
-  label: item.label
-});
+const createDockItemFromBoard = (item: BoardItem): AppIconItem => {
+  if (item.kind === 'app') {
+    return {
+      image: item.image,
+      kind: 'app',
+      label: item.label
+    };
+  }
+  throw new Error('Cannot create dock item from weather widget');
+};
 
 const APP_ICONS: AppIconItem[] = [
   { image: require('../../assets/images/app-icons/facebook.png'), kind: 'app', label: 'Facebook' },
@@ -114,6 +119,11 @@ const shakeTimingConfig = {
   easing: Easing.inOut(Easing.ease)
 };
 
+// 平台检测
+const isIOS = Platform.OS === 'ios';
+const isAndroid = Platform.OS === 'android';
+
+// 基础配置
 const GRID_COLUMNS = 4;
 const GRID_COLUMN_GAP = 16;
 const GRID_ROW_GAP = 18;
@@ -127,11 +137,13 @@ const GRID_CELL_MAX_SIZE = 82;
 const GRID_LABEL_HEIGHT = 22;
 const ICON_FRAME_INSET = 8;
 const ICON_IMAGE_INSET = 6;
-const DOCK_TOP_GAP = 4;
-const DOCK_VERTICAL_PADDING = 12;
-const DOCK_BACKGROUND_OVERFLOW = 12;
-const DOCK_BOTTOM_EXTRA_PADDING = 8;
-const DOCK_COLUMN_GAP = 14;
+
+// 平台特定的Dock配置
+const DOCK_TOP_GAP = isAndroid ? 8 : 4; // Android需要更多顶部间距
+const DOCK_VERTICAL_PADDING = isAndroid ? 16 : 12; // Android需要更多垂直内边距
+const DOCK_BACKGROUND_OVERFLOW = isAndroid ? 16 : 12; // Android需要更多背景溢出
+const DOCK_BOTTOM_EXTRA_PADDING = isAndroid ? 12 : 8; // Android需要更多底部额外内边距
+const DOCK_COLUMN_GAP = isAndroid ? 18 : 14; // Android需要更多列间距
 
 const getBoardItemKey = (item: BoardItem) =>
   item.kind === 'weather' ? item.id : item.label;
@@ -492,8 +504,12 @@ export default function AppleIconSort() {
   const dockContentWidth = useMemo(() => {
     const minimumWidth = cellSize * DOCK_CAPACITY + DOCK_COLUMN_GAP * (DOCK_CAPACITY - 1);
     const targetWidth = Math.round(boardContentWidth - DOCK_BACKGROUND_OVERFLOW * 2);
-
-    return Math.max(targetWidth, minimumWidth);
+    
+    // Android特定修复：确保dock有足够的宽度
+    const finalWidth = Math.max(targetWidth, minimumWidth);
+    
+    // Android需要额外的宽度调整
+    return isAndroid ? finalWidth + 8 : finalWidth;
   }, [boardContentWidth, cellSize]);
 
   const dockHorizontalInset = useMemo(() => {
@@ -521,7 +537,9 @@ export default function AppleIconSort() {
       flexGrow: 0,
       flexShrink: 0,
       height: cellSize,
-      width: cellSize
+      width: cellSize,
+      // Android特定修复：确保dock项正确对齐
+      justifyContent: isAndroid ? 'center' : 'flex-start'
     }),
     [cellSize]
   );
@@ -540,7 +558,10 @@ export default function AppleIconSort() {
       height: dockHeight,
       paddingHorizontal: dockHorizontalInset + DOCK_BACKGROUND_OVERFLOW,
       paddingVertical: DOCK_VERTICAL_PADDING,
-      width: boardWidth
+      width: boardWidth,
+      // Android特定修复：确保dock区域有正确的对齐
+      alignItems: isAndroid ? 'center' : 'stretch',
+      justifyContent: 'center'
     }),
     [boardWidth, dockHeight, dockHorizontalInset]
   );
@@ -613,19 +634,27 @@ export default function AppleIconSort() {
       console.log('captureActiveItem called with origin:', origin, 'key:', key);
       activeOriginRef.current = origin;
       const sourceItems = origin === 'grid' ? gridItems : dockItems;
-      console.log('Source items:', sourceItems.map(item => item.label || item.id));
+      console.log('Source items:', sourceItems.map(item => 
+        origin === 'dock' ? (item as AppIconItem).label : getBoardItemKey(item as BoardItem)
+      ));
       
       // 去掉key前面的点，这是拖拽库添加的前缀
       const cleanKey = key.startsWith('.$') ? key.substring(2) : key;
       console.log('Clean key:', cleanKey);
       
       const foundIndex = sourceItems.findIndex(
-        item => getBoardItemKey(item as BoardItem) === cleanKey
+        item => {
+          if (origin === 'dock') {
+            return (item as AppIconItem).label === cleanKey;
+          } else {
+            return getBoardItemKey(item as BoardItem) === cleanKey;
+          }
+        }
       );
       console.log('Found index:', foundIndex);
       
       activeIndexRef.current = foundIndex >= 0 ? foundIndex : null;
-      const foundItem = foundIndex >= 0 ? (sourceItems[foundIndex] as BoardItem) : null;
+      const foundItem = foundIndex >= 0 ? sourceItems[foundIndex] : null;
       
       if (!foundItem) {
         console.log('No item found, setting activeItemRef to null');
@@ -634,14 +663,14 @@ export default function AppleIconSort() {
       }
       
       if (origin === 'dock') {
-        console.log('Creating board item from dock item:', foundItem.label);
+        console.log('Creating board item from dock item:', (foundItem as AppIconItem).label);
         const boardItem = createBoardItemFromApp(foundItem as AppIconItem);
         console.log('Created board item:', boardItem);
         activeItemRef.current = boardItem;
         return;
       }
       
-      console.log('Using grid item directly:', foundItem.label || foundItem.id);
+      console.log('Using grid item directly:', getBoardItemKey(foundItem as BoardItem));
       activeItemRef.current = { ...(foundItem as BoardItem) };
     },
     [dockItems, gridItems]
@@ -659,7 +688,10 @@ export default function AppleIconSort() {
 
   const handleZoneDrop = useCallback((zone: DropZone) => {
     console.log('handleZoneDrop called with zone:', zone);
-    console.log('activeItem:', activeItemRef.current?.label || activeItemRef.current?.id);
+    console.log('activeItem:', activeItemRef.current ? 
+      (activeItemRef.current.kind === 'app' ? activeItemRef.current.label : activeItemRef.current.id) : 
+      'null'
+    );
     console.log('activeOrigin:', activeOriginRef.current);
     
     // 设置dropZoneRef，以便handleGridDragEnd和handleDockDragEnd可以使用
@@ -683,7 +715,7 @@ export default function AppleIconSort() {
         }
         
         // 从dock中移除该项
-        setDockItems(prev => prev.filter(item => item.label !== activeItem.label));
+        setDockItems(prev => prev.filter(item => item.label !== (activeItem as AppIconItem).label));
         
         // 添加到grid中
         setGridItems(prev => [...prev, createBoardItemFromApp(activeItem)]);
@@ -696,12 +728,12 @@ export default function AppleIconSort() {
       // 如果从grid拖拽到dock
       if (activeOrigin === 'grid' && zone === 'dock' && activeItem.kind === 'app') {
         console.log('处理从grid到dock的拖拽');
-        console.log('activeItem详情:', activeItem);
+        console.log('activeItem详情:', activeItem.kind === 'app' ? activeItem.label : (activeItem as WeatherWidgetItem).id);
         
         // 先从grid中移除该项
         setGridItems(prev => {
-          console.log('从grid移除应用前:', prev.map(item => item.label || item.id));
-          console.log('要移除的应用:', activeItem.label || activeItem.id);
+          console.log('从grid移除应用前:', prev.map(item => getBoardItemKey(item)));
+          console.log('要移除的应用:', getBoardItemKey(activeItem));
           const nextGrid = prev.filter(item => {
             const itemKey = getBoardItemKey(item);
             const activeKey = getBoardItemKey(activeItem);
@@ -709,7 +741,7 @@ export default function AppleIconSort() {
             console.log(`比较 ${itemKey} 与 ${activeKey}, 应该移除: ${shouldRemove}`);
             return !shouldRemove;
           });
-          console.log('从grid移除应用后:', nextGrid.map(item => item.label || item.id));
+          console.log('从grid移除应用后:', nextGrid.map(item => getBoardItemKey(item)));
           return nextGrid;
         });
         
@@ -730,16 +762,16 @@ export default function AppleIconSort() {
               
               // 将新应用添加到dock
               const nextDock = [...prevDockItems];
-              nextDock[nextDock.length - 1] = createDockItemFromBoard(activeItem);
+              nextDock[nextDock.length - 1] = createDockItemFromBoard(activeItem as BoardItem);
               console.log('Dock更新前:', prevDockItems.map(item => item.label));
               console.log('Dock更新后:', nextDock.map(item => item.label));
               
               // 将被替换的应用添加到grid最后
               if (lastDockItem) {
                 setGridItems(prevGridItems => {
-                  console.log('Grid添加应用前:', prevGridItems.map(item => item.label || item.id));
+                  console.log('Grid添加应用前:', prevGridItems.map(item => (item as AppIconItem).label || item.id));
                   const nextGrid = [...prevGridItems, createBoardItemFromApp(lastDockItem)];
-                  console.log('Grid添加应用后:', nextGrid.map(item => item.label || item.id));
+                  console.log('Grid添加应用后:', nextGrid.map(item => (item as AppIconItem).label || item.id));
                   return nextGrid;
                 });
               }
@@ -748,7 +780,7 @@ export default function AppleIconSort() {
             } else {
               console.log('Dock未满，直接添加');
               // dock未满，直接添加
-              const nextDock = [...prevDockItems, createDockItemFromBoard(activeItem)];
+              const nextDock = [...prevDockItems, createDockItemFromBoard(activeItem as BoardItem)];
               console.log('Dock添加应用前:', prevDockItems.map(item => item.label));
               console.log('Dock添加应用后:', nextDock.map(item => item.label));
               return nextDock;
@@ -795,7 +827,10 @@ export default function AppleIconSort() {
       const originIndex = activeIndexRef.current;
       const rawDropZone = dropZoneRef.current;
       
-      console.log('activeItem:', activeItem?.label || activeItem?.id);
+      console.log('activeItem:', activeItem ? 
+  (activeItem.kind === 'app' ? activeItem.label : activeItem.id) : 
+  'null'
+);
       console.log('activeOrigin:', activeOrigin);
       console.log('rawDropZone:', rawDropZone);
       
@@ -862,7 +897,7 @@ export default function AppleIconSort() {
         activeItem.kind === 'app'
       ) {
         setDockItems(prevDock => {
-          let nextDock = prevDock.filter(item => item.label !== activeItem.label);
+          let nextDock = prevDock.filter(item => item.label !== (activeItem as AppIconItem).label);
           if (displacedDockItem) {
             const desiredIndex =
               originIndex != null
@@ -912,16 +947,16 @@ export default function AppleIconSort() {
             
             // 将新应用添加到dock
             const nextDock = [...prevDockItems];
-            nextDock[nextDock.length - 1] = createDockItemFromBoard(activeItem);
+            nextDock[nextDock.length - 1] = createDockItemFromBoard(activeItem as BoardItem);
             console.log('Dock更新前:', prevDockItems.map(item => item.label));
             console.log('Dock更新后:', nextDock.map(item => item.label));
             
             // 将被替换的应用添加到grid最后
             if (lastDockItem) {
               setGridItems(prevGridItems => {
-                console.log('Grid添加应用前:', prevGridItems.map(item => item.label || item.id));
+                console.log('Grid添加应用前:', prevGridItems.map(item => getBoardItemKey(item)));
                 const nextGrid = [...prevGridItems, createBoardItemFromApp(lastDockItem)];
-                console.log('Grid添加应用后:', nextGrid.map(item => item.label || item.id));
+                console.log('Grid添加应用后:', nextGrid.map(item => getBoardItemKey(item)));
                 return nextGrid;
               });
             }
@@ -939,8 +974,8 @@ export default function AppleIconSort() {
         
         // 从grid中移除该项
         setGridItems(prev => {
-          console.log('从grid移除应用前:', prev.map(item => item.label || item.id));
-          console.log('要移除的应用:', activeItem.label || activeItem.id);
+          console.log('从grid移除应用前:', prev.map(item => (item as AppIconItem).label || item.id));
+          console.log('要移除的应用:', (activeItem as AppIconItem).label || activeItem.id);
           const nextGrid = prev.filter(item => {
             const itemKey = getBoardItemKey(item);
             const activeKey = getBoardItemKey(activeItem);
@@ -948,7 +983,7 @@ export default function AppleIconSort() {
             console.log(`比较 ${itemKey} 与 ${activeKey}, 应该移除: ${shouldRemove}`);
             return !shouldRemove;
           });
-          console.log('从grid移除应用后:', nextGrid.map(item => item.label || item.id));
+          console.log('从grid移除应用后:', nextGrid.map(item => (item as AppIconItem).label || item.id));
           return nextGrid;
         });
         
@@ -973,7 +1008,10 @@ export default function AppleIconSort() {
       const originIndex = activeIndexRef.current;
       const rawDropZone = dropZoneRef.current;
       
-      console.log('activeItem:', activeItem?.label || activeItem?.id);
+      console.log('activeItem:', activeItem ? 
+  (activeItem.kind === 'app' ? activeItem.label : activeItem.id) : 
+  'null'
+);
       console.log('activeOrigin:', activeOrigin);
       console.log('rawDropZone:', rawDropZone);
       
@@ -1025,7 +1063,7 @@ export default function AppleIconSort() {
         });
 
         setDockItems(prevDock => {
-          let nextDock = prevDock.filter(item => item.label !== activeItem.label);
+          let nextDock = prevDock.filter(item => item.label !== (activeItem as AppIconItem).label);
 
           if (displacedDockItem) {
             const desiredIndex =
@@ -1072,7 +1110,7 @@ export default function AppleIconSort() {
         }
 
         if (activeOrigin === 'grid' && activeItem.kind === 'app') {
-          const existingIndex = reordered.findIndex(item => item.label === activeItem.label);
+          const existingIndex = reordered.findIndex(item => item.label === (activeItem as AppIconItem).label);
           if (existingIndex !== -1) {
             return reordered;
           }
@@ -1163,15 +1201,15 @@ export default function AppleIconSort() {
                     width: boardWidth
                   }
                 ]}>
-                <Sortable.Flex
-                  columnGap={GRID_COLUMN_GAP}
-                  flexDirection='row'
-                  flexWrap='wrap'
-                  inactiveItemOpacity={1}
-                  onDragEnd={handleGridDragEnd}
-                  onDragStart={handleGridDragStart}
-                  rowGap={GRID_ROW_GAP}
-                  style={{ paddingBottom: GRID_VERTICAL_PADDING, width: boardContentWidth }}>
+                <View style={{ paddingBottom: GRID_VERTICAL_PADDING, width: boardContentWidth }}>
+                  <Sortable.Flex
+                    columnGap={GRID_COLUMN_GAP}
+                    flexDirection='row'
+                    flexWrap='wrap'
+                    inactiveItemOpacity={1}
+                    onDragEnd={handleGridDragEnd}
+                    onDragStart={handleGridDragStart}
+                    rowGap={GRID_ROW_GAP}>
                   {gridItems.map(item => {
                     const key = getBoardItemKey(item);
 
@@ -1205,7 +1243,8 @@ export default function AppleIconSort() {
                       </View>
                     );
                   })}
-                </Sortable.Flex>
+                  </Sortable.Flex>
+                </View>
               </View>
             </Sortable.BaseZone>
           </View>
@@ -1234,15 +1273,20 @@ export default function AppleIconSort() {
                   styles.dockZone,
                   dockZoneStyle
                 ]}>
-                <Sortable.Flex
-                  alignItems='center'
-                  columnGap={DOCK_COLUMN_GAP}
-                  flexDirection='row'
-                  inactiveItemOpacity={1}
-                  onDragEnd={handleDockDragEnd}
-                  onDragStart={handleDockDragStart}
-                  rowGap={0}
-                  style={{ width: dockContentWidth }}>
+                <View style={{ 
+                  width: dockContentWidth,
+                  // Android特定修复：确保dock项正确对齐
+                  justifyContent: isAndroid ? 'center' : 'flex-start',
+                  alignItems: 'center'
+                }}>
+                  <Sortable.Flex
+                    alignItems='center'
+                    columnGap={DOCK_COLUMN_GAP}
+                    flexDirection='row'
+                    inactiveItemOpacity={1}
+                    onDragEnd={handleDockDragEnd}
+                    onDragStart={handleDockDragStart}
+                    rowGap={0}>
                   {dockItems.map(item => (
                     <View key={item.label} style={dockCellStyle}>
                       <Icon
@@ -1255,7 +1299,8 @@ export default function AppleIconSort() {
                       />
                     </View>
                   ))}
-                </Sortable.Flex>
+                  </Sortable.Flex>
+                </View>
               </Sortable.BaseZone>
             </View>
           </View>
@@ -1490,13 +1535,15 @@ const styles = StyleSheet.create({
   dockBackground: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderCurve: 'continuous',
-    borderRadius: 44,
+    borderRadius: isAndroid ? 48 : 44, // Android使用更大的圆角
     bottom: 0,
     position: 'absolute',
     shadowColor: '#000',
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 18
+    shadowOffset: { height: isAndroid ? 16 : 12, width: 0 }, // Android使用更深的阴影
+    shadowOpacity: isAndroid ? 0.2 : 0.15, // Android使用更高的阴影透明度
+    shadowRadius: isAndroid ? 22 : 18, // Android使用更大的阴影半径
+    // Android兼容性修复
+    elevation: isAndroid ? 8 : 0
   },
   dockSection: {
     alignItems: 'center',
@@ -1505,7 +1552,9 @@ const styles = StyleSheet.create({
   },
   dockZone: {
     justifyContent: 'center',
-    paddingVertical: 0
+    paddingVertical: 0,
+    // Android特定修复：确保dock栏内容正确对齐
+    alignItems: isAndroid ? 'center' : 'stretch'
   },
   zoneContainer: {
     flex: 1

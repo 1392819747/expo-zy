@@ -1,8 +1,17 @@
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import type { ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
-import { Alert, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View
+} from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -21,6 +30,8 @@ import Sortable, {
   type SortableFlexDragEndParams,
   useItemContext
 } from 'react-native-sortables';
+
+import WeChatApp, { type WeChatTabKey } from '../../components/wechat-app';
 
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -298,27 +309,45 @@ const WeatherWidget = memo(function WeatherWidget({
         animatedShakeStyle,
         { height: size.height, width: size.width }
       ]}>
-      <View style={styles.widgetContainer}>
+      <LinearGradient
+        colors={['#1a1f38', '#1f2c5c', '#274782']}
+        end={{ x: 1, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        style={[styles.widgetContainer, { height: size.height, width: size.width }]}>
         <View style={styles.widgetHeader}>
           <View>
             <Text style={styles.widgetLocation}>{item.location}</Text>
-            <Text style={styles.widgetCondition}>{item.condition}</Text>
+            <Text style={styles.widgetCondition}>{`今天 · ${item.condition}`}</Text>
           </View>
-          <View style={styles.widgetTemperatureGroup}>
-            <Text style={styles.widgetTemperature}>{item.temperature}</Text>
-            <Text style={styles.widgetRange}>{`H: ${item.high}   L: ${item.low}`}</Text>
+          <View style={styles.widgetBadge}>
+            <Text style={styles.widgetBadgeText}>🌤️</Text>
+          </View>
+        </View>
+        <View style={styles.widgetTemperatureRow}>
+          <Text style={styles.widgetTemperature}>{item.temperature}</Text>
+          <View style={styles.widgetRangeCard}>
+            <Text style={styles.widgetRangeLabel}>最高</Text>
+            <Text style={styles.widgetRangeValue}>{item.high}</Text>
+            <View style={styles.widgetRangeDivider} />
+            <Text style={styles.widgetRangeLabel}>最低</Text>
+            <Text style={styles.widgetRangeValue}>{item.low}</Text>
           </View>
         </View>
         <View style={styles.widgetDivider} />
         <View style={styles.widgetForecastRow}>
           {item.hourly.map(forecastPoint => (
-            <View key={forecastPoint.time} style={styles.widgetForecastItem}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.05)']}
+              end={{ x: 1, y: 1 }}
+              key={forecastPoint.time}
+              start={{ x: 0, y: 0 }}
+              style={styles.widgetForecastItem}>
               <Text style={styles.widgetForecastTime}>{forecastPoint.time}</Text>
               <Text style={styles.widgetForecastTemp}>{forecastPoint.temperature}</Text>
-            </View>
+            </LinearGradient>
           ))}
         </View>
-      </View>
+      </LinearGradient>
       <AnimatedPressable
         style={[styles.deleteButton, animatedDeleteButtonStyle]}
         onPress={() => onDelete(item)}>
@@ -345,6 +374,8 @@ export default function AppleIconSort() {
   const [gridItems, setGridItems] = useState<BoardItem[]>(initialGridItems);
   const [dockItems, setDockItems] = useState<AppIconItem[]>(initialDockIcons);
   const [isEditing, setIsEditing] = useState(false);
+  const [isWeChatOpen, setIsWeChatOpen] = useState(false);
+  const [activeWeChatTab, setActiveWeChatTab] = useState<WeChatTabKey>('chats');
   const isEditingValue = useDerivedValue(() => isEditing);
 
   const { width: screenWidth } = useWindowDimensions();
@@ -478,9 +509,14 @@ export default function AppleIconSort() {
         return;
       }
       void Haptics.selectionAsync();
+      if (item.label === 'WeChat') {
+        setActiveWeChatTab('chats');
+        setIsWeChatOpen(true);
+        return;
+      }
       Alert.alert(item.label, '该应用稍后提供完整体验。');
     },
-    [isEditing]
+    [isEditing, setActiveWeChatTab, setIsWeChatOpen]
   );
 
   const activeItemRef = useRef<BoardItem | null>(null);
@@ -1022,7 +1058,7 @@ export default function AppleIconSort() {
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
-      <StatusBar hidden={isEditing} style="light" />
+      <StatusBar hidden={isEditing || isWeChatOpen} style="light" />
       {/* Done按钮放在状态栏右上角 */}
       {isEditing && (
         <AnimatedPressable
@@ -1147,6 +1183,13 @@ export default function AppleIconSort() {
           </View>
         </View>
       </Sortable.MultiZoneProvider>
+      {isWeChatOpen && (
+        <WeChatApp
+          activeTab={activeWeChatTab}
+          onClose={() => setIsWeChatOpen(false)}
+          onTabChange={setActiveWeChatTab}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -1231,68 +1274,111 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   widgetWrapper: {
-    position: 'relative'
+    borderRadius: 28,
+    elevation: 12,
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { height: 16, width: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24
   },
   widgetContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     borderCurve: 'continuous',
-    borderRadius: 26,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 28,
     flex: 1,
-    gap: 20,
     justifyContent: 'space-between',
-    padding: 18
+    overflow: 'hidden',
+    padding: 20
   },
   widgetHeader: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between'
   },
   widgetLocation: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 18,
-    fontWeight: '600'
+    color: '#f6f7fb',
+    fontSize: 20,
+    fontWeight: '700'
   },
   widgetCondition: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(235, 239, 255, 0.7)',
     fontSize: 14,
     marginTop: 4
   },
-  widgetTemperatureGroup: {
-    alignItems: 'flex-end'
+  widgetBadge: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderRadius: 20,
+    height: 44,
+    justifyContent: 'center',
+    width: 44
   },
-  widgetTemperature: {
-    color: 'white',
-    fontSize: 42,
-    fontWeight: '700'
+  widgetBadgeText: {
+    fontSize: 26
   },
-  widgetRange: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 12,
-    marginTop: 4
-  },
-  widgetDivider: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 999,
-    height: StyleSheet.hairlineWidth
-  },
-  widgetForecastRow: {
+  widgetTemperatureRow: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 6
+    marginTop: 16
+  },
+  widgetTemperature: {
+    color: '#ffffff',
+    fontSize: 56,
+    fontWeight: '700',
+    letterSpacing: 1
+  },
+  widgetRangeCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(12, 16, 34, 0.4)',
+    borderRadius: 18,
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 14
+  },
+  widgetRangeLabel: {
+    color: 'rgba(226, 232, 255, 0.7)',
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  widgetRangeValue: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700'
+  },
+  widgetRangeDivider: {
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 4
+  },
+  widgetDivider: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 999,
+    height: StyleSheet.hairlineWidth,
+    marginTop: 16
+  },
+  widgetForecastRow: {
+    columnGap: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 18
   },
   widgetForecastItem: {
     alignItems: 'center',
-    gap: 6
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10
   },
   widgetForecastTime: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 12
+    color: 'rgba(226, 232, 255, 0.75)',
+    fontSize: 12,
+    marginBottom: 6
   },
   widgetForecastTemp: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600'
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700'
   },
   dockBackground: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',

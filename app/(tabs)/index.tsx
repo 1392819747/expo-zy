@@ -52,6 +52,17 @@ type DragOrigin = 'dock' | 'grid';
 
 type DropZone = DragOrigin;
 
+const createBoardItemFromApp = (item: AppIconItem): BoardItem => ({
+  ...item,
+  id: item.label
+});
+
+const createDockItemFromBoard = (item: BoardItem): AppIconItem => ({
+  image: item.image,
+  kind: 'app',
+  label: item.label
+});
+
 const APP_ICONS: AppIconItem[] = [
   { image: require('../../assets/images/app-icons/facebook.png'), kind: 'app', label: 'Facebook' },
   { image: require('../../assets/images/app-icons/instagram.png'), kind: 'app', label: 'Instagram' },
@@ -282,7 +293,7 @@ const WeatherWidget = memo(function WeatherWidget({
 
 export default function AppleIconSort() {
   const initialDockIcons = useMemo(
-    () => APP_ICONS.slice(0, DOCK_CAPACITY).map(icon => ({ ...icon, id: icon.label })),
+    () => APP_ICONS.slice(0, DOCK_CAPACITY).map(icon => ({ ...icon })),
     []
   );
   const initialGridItems = useMemo(
@@ -420,13 +431,19 @@ export default function AppleIconSort() {
     [handleBoardItemDelete]
   );
 
+  const handleDockItemDelete = useCallback((item: AppIconItem) => {
+    setDockItems(prevItems => prevItems.filter(candidate => candidate.label !== item.label));
+  }, []);
+
   const activeItemRef = useRef<BoardItem | null>(null);
   const activeOriginRef = useRef<DragOrigin | null>(null);
   const dropZoneRef = useRef<DropZone | null>(null);
+  const activeIndexRef = useRef<number | null>(null);
 
   const resetActiveTracking = useCallback(() => {
     activeItemRef.current = null;
     activeOriginRef.current = null;
+    activeIndexRef.current = null;
     dropZoneRef.current = null;
   }, []);
 
@@ -434,8 +451,20 @@ export default function AppleIconSort() {
     (origin: DragOrigin, key: string) => {
       activeOriginRef.current = origin;
       const sourceItems = origin === 'grid' ? gridItems : dockItems;
-      const foundItem = sourceItems.find(item => getBoardItemKey(item as BoardItem) === key);
-      activeItemRef.current = foundItem ? ({ ...foundItem } as BoardItem) : null;
+      const foundIndex = sourceItems.findIndex(
+        item => getBoardItemKey(item as BoardItem) === key
+      );
+      activeIndexRef.current = foundIndex >= 0 ? foundIndex : null;
+      const foundItem = foundIndex >= 0 ? (sourceItems[foundIndex] as BoardItem) : null;
+      if (!foundItem) {
+        activeItemRef.current = null;
+        return;
+      }
+      if (origin === 'dock') {
+        activeItemRef.current = { ...createBoardItemFromApp(foundItem as AppIconItem) };
+        return;
+      }
+      activeItemRef.current = { ...(foundItem as BoardItem) };
     },
     [dockItems, gridItems]
   );
@@ -477,70 +506,173 @@ export default function AppleIconSort() {
   );
 
   const handleGridDragEnd = useCallback(
-    ({ order }: SortableFlexDragEndParams) => {
+    ({ order, toIndex }: SortableFlexDragEndParams) => {
+      const dropZone = dropZoneRef.current;
+      const activeItem = activeItemRef.current;
+      const activeOrigin = activeOriginRef.current;
+      const originIndex = activeIndexRef.current;
+      let displacedDockItem: AppIconItem | null = null;
+
       setGridItems(prevItems => {
         const reordered = order<BoardItem>(prevItems);
-        const activeItem = activeItemRef.current;
-        const activeOrigin = activeOriginRef.current;
-        const dropZone = dropZoneRef.current;
 
-        if (!activeItem || activeOrigin !== 'grid') {
+        if (dropZone !== 'grid') {
           return reordered;
         }
 
-        if (dropZone === 'dock' && activeItem.kind === 'app') {
-          let shouldRemoveFromGrid = false;
-          setDockItems(prevDock => {
-            if (prevDock.some(candidate => candidate.label === activeItem.label)) {
-              return prevDock;
-            }
-            if (prevDock.length >= DOCK_CAPACITY) {
-              return prevDock;
-            }
-            shouldRemoveFromGrid = true;
-            return [...prevDock, { ...activeItem }];
-          });
+        if (!activeItem) {
+          return reordered;
+        }
 
-          if (shouldRemoveFromGrid) {
-            return reordered.filter(item => getBoardItemKey(item) !== getBoardItemKey(activeItem));
+        if (activeOrigin === 'grid') {
+          return reordered;
+        }
+
+        if (activeOrigin === 'dock' && activeItem.kind === 'app') {
+          const alreadyInGrid = prevItems.some(
+            candidate => getBoardItemKey(candidate) === getBoardItemKey(activeItem)
+          );
+
+          if (alreadyInGrid) {
+            return reordered;
+          }
+
+          const safeIndex = Number.isFinite(toIndex) ? Math.max(0, Math.floor(toIndex)) : 0;
+          const clampedInsertionIndex = Math.min(safeIndex, prevItems.length);
+          let workingItems = [...prevItems];
+
+          if (clampedInsertionIndex < prevItems.length) {
+            const targetItem = prevItems[clampedInsertionIndex];
+            if (targetItem?.kind === 'app') {
+              displacedDockItem = createDockItemFromBoard(targetItem);
+              workingItems = prevItems.filter((_, index) => index !== clampedInsertionIndex);
+            }
+          }
+
+          const insertAt = Math.min(clampedInsertionIndex, workingItems.length);
+          const nextItems = [...workingItems];
+          nextItems.splice(insertAt, 0, createBoardItemFromApp(activeItem));
+          return nextItems;
+        }
+
+        return reordered;
+      });
+
+      if (dropZone === 'grid' && activeItem && activeOrigin === 'dock' && activeItem.kind === 'app') {
+        setDockItems(prevDock => {
+          let nextDock = prevDock.filter(item => item.label !== activeItem.label);
+          if (displacedDockItem) {
+            const desiredIndex =
+              originIndex != null
+                ? Math.max(0, Math.min(originIndex, nextDock.length))
+                : nextDock.length;
+            if (nextDock.length < DOCK_CAPACITY) {
+              const insertAt = Math.min(desiredIndex, nextDock.length);
+              nextDock = [
+                ...nextDock.slice(0, insertAt),
+                displacedDockItem,
+                ...nextDock.slice(insertAt)
+              ];
+            } else if (nextDock.length > 0) {
+              const targetIndex = Math.min(desiredIndex, nextDock.length - 1);
+              const updated = [...nextDock];
+              updated[targetIndex] = displacedDockItem;
+              nextDock = updated;
+            }
+          }
+          return nextDock.slice(0, DOCK_CAPACITY);
+        });
+
+        resetActiveTracking();
+        return;
+      }
+
+      if (dropZone === 'grid') {
+        resetActiveTracking();
+      } else if (!dropZone) {
+        resetActiveTracking();
+      }
+    },
+    [resetActiveTracking]
+  );
+
+  const handleDockDragEnd = useCallback(
+    ({ order, toIndex }: SortableFlexDragEndParams) => {
+      const dropZone = dropZoneRef.current;
+      const activeItem = activeItemRef.current;
+      const activeOrigin = activeOriginRef.current;
+      const originIndex = activeIndexRef.current;
+      let displacedGridItem: AppIconItem | null = null;
+
+      setDockItems(prevItems => {
+        const reordered = order<AppIconItem>(prevItems);
+
+        if (dropZone !== 'dock') {
+          return reordered;
+        }
+
+        if (!activeItem) {
+          return reordered;
+        }
+
+        if (activeOrigin === 'dock') {
+          return reordered;
+        }
+
+        if (activeOrigin === 'grid' && activeItem.kind === 'app') {
+          const existingIndex = reordered.findIndex(item => item.label === activeItem.label);
+          if (existingIndex !== -1) {
+            return reordered;
+          }
+
+          const safeIndex = Number.isFinite(toIndex) ? Math.max(0, Math.floor(toIndex)) : 0;
+          const maxTargetIndex = Math.max(0, Math.min(safeIndex, DOCK_CAPACITY - 1));
+          const next = [...reordered];
+
+          if (next.length < DOCK_CAPACITY) {
+            const insertAt = Math.min(maxTargetIndex, next.length);
+            next.splice(insertAt, 0, createDockItemFromBoard(activeItem));
+            return next;
+          }
+
+          if (next.length > 0) {
+            const targetIndex = Math.min(maxTargetIndex, next.length - 1);
+            displacedGridItem = { ...next[targetIndex] };
+            next[targetIndex] = createDockItemFromBoard(activeItem);
+            return next;
           }
         }
 
         return reordered;
       });
 
-      resetActiveTracking();
-    },
-    [resetActiveTracking]
-  );
+      if (dropZone === 'dock' && activeItem && activeOrigin === 'grid' && activeItem.kind === 'app') {
+        setGridItems(prevGrid => {
+          let nextGrid = prevGrid.filter(
+            candidate => getBoardItemKey(candidate) !== getBoardItemKey(activeItem)
+          );
+          if (displacedGridItem) {
+            const insertAt =
+              originIndex != null
+                ? Math.max(0, Math.min(originIndex, nextGrid.length))
+                : nextGrid.length;
+            nextGrid = [
+              ...nextGrid.slice(0, insertAt),
+              createBoardItemFromApp(displacedGridItem),
+              ...nextGrid.slice(insertAt)
+            ];
+          }
+          return nextGrid;
+        });
+        resetActiveTracking();
+        return;
+      }
 
-  const handleDockDragEnd = useCallback(
-    ({ order }: SortableFlexDragEndParams) => {
-      setDockItems(prevItems => {
-        const reordered = order<AppIconItem>(prevItems);
-        const activeItem = activeItemRef.current;
-        const activeOrigin = activeOriginRef.current;
-        const dropZone = dropZoneRef.current;
-
-        if (!activeItem || activeOrigin !== 'dock') {
-          return reordered;
-        }
-
-        if (dropZone === 'grid' && activeItem.kind === 'app') {
-          const filteredDock = reordered.filter(item => item.label !== activeItem.label);
-          setGridItems(prevGrid => {
-            if (prevGrid.some(candidate => getBoardItemKey(candidate) === getBoardItemKey(activeItem))) {
-              return prevGrid;
-            }
-            return [...prevGrid, { ...activeItem }];
-          });
-          return filteredDock;
-        }
-
-        return reordered;
-      });
-
-      resetActiveTracking();
+      if (dropZone === 'dock') {
+        resetActiveTracking();
+      } else if (!dropZone) {
+        resetActiveTracking();
+      }
     },
     [resetActiveTracking]
   );
@@ -658,7 +790,7 @@ export default function AppleIconSort() {
                       <Icon
                         isEditing={isEditingValue}
                         item={item}
-                        showDelete={false}
+                        onDelete={handleDockItemDelete}
                         showLabel={false}
                         size={cellSize}
                       />

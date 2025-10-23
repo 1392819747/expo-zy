@@ -98,9 +98,10 @@ const MAX_BOARD_WIDTH = 430;
 const GRID_CELL_MIN_SIZE = 70;
 const GRID_CELL_MAX_SIZE = 82;
 const GRID_LABEL_HEIGHT = 22;
-const DOCK_TOP_GAP = 6;
+const DOCK_TOP_GAP = 4;
 const DOCK_VERTICAL_PADDING = 12;
-const DOCK_EXTRA_SIDE_MARGIN = 6;
+const DOCK_BACKGROUND_OVERFLOW = 12;
+const DOCK_BOTTOM_EXTRA_PADDING = 8;
 const DOCK_COLUMN_GAP = 14;
 
 const getBoardItemKey = (item: BoardItem) =>
@@ -333,10 +334,16 @@ export default function AppleIconSort() {
 
   const dockContentWidth = useMemo(() => {
     const minimumWidth = cellSize * DOCK_CAPACITY + DOCK_COLUMN_GAP * (DOCK_CAPACITY - 1);
-    const targetWidth = Math.round(boardContentWidth - DOCK_EXTRA_SIDE_MARGIN * 2);
+    const targetWidth = Math.round(boardContentWidth - DOCK_BACKGROUND_OVERFLOW * 2);
 
     return Math.max(targetWidth, minimumWidth);
   }, [boardContentWidth, cellSize]);
+
+  const dockHorizontalInset = useMemo(() => {
+    const inset = (boardWidth - (dockContentWidth + DOCK_BACKGROUND_OVERFLOW * 2)) / 2;
+
+    return Math.max(0, Math.round(inset));
+  }, [boardWidth, dockContentWidth]);
 
   const gridCellStyle = useMemo<StyleProp<ViewStyle>>(
     () => ({
@@ -365,20 +372,20 @@ export default function AppleIconSort() {
   const dockBackgroundStyle = useMemo<StyleProp<ViewStyle>>(
     () => ({
       height: dockHeight,
-      left: GRID_HORIZONTAL_PADDING + DOCK_EXTRA_SIDE_MARGIN,
-      right: GRID_HORIZONTAL_PADDING + DOCK_EXTRA_SIDE_MARGIN
+      left: dockHorizontalInset,
+      right: dockHorizontalInset
     }),
-    [dockHeight]
+    [dockHeight, dockHorizontalInset]
   );
 
   const dockZoneStyle = useMemo<StyleProp<ViewStyle>>(
     () => ({
       height: dockHeight,
-      paddingHorizontal: GRID_HORIZONTAL_PADDING + DOCK_EXTRA_SIDE_MARGIN,
+      paddingHorizontal: dockHorizontalInset + DOCK_BACKGROUND_OVERFLOW,
       paddingVertical: DOCK_VERTICAL_PADDING,
       width: boardWidth
     }),
-    [boardWidth, dockHeight]
+    [boardWidth, dockHeight, dockHorizontalInset]
   );
 
   const handleBoardItemDelete = useCallback((item: HomeItem) => {
@@ -528,7 +535,7 @@ export default function AppleIconSort() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar hidden={isEditing} style="light" />
       {/* Done按钮放在状态栏右上角 */}
       {isEditing && (
@@ -606,7 +613,7 @@ export default function AppleIconSort() {
             style={[
               styles.dockSection,
               {
-                paddingBottom: Math.max(insets.bottom, 12),
+                paddingBottom: insets.bottom + DOCK_BOTTOM_EXTRA_PADDING,
                 paddingTop: DOCK_TOP_GAP
               }
             ]}>

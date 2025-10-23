@@ -95,9 +95,13 @@ const GRID_HORIZONTAL_PADDING = 18;
 const GRID_VERTICAL_PADDING = 14;
 const DOCK_CAPACITY = 4;
 const MAX_BOARD_WIDTH = 430;
-const GRID_CELL_MIN_SIZE = 68;
-const GRID_CELL_MAX_SIZE = 94;
-const DOCK_TOP_GAP = 8;
+const GRID_CELL_MIN_SIZE = 70;
+const GRID_CELL_MAX_SIZE = 82;
+const GRID_LABEL_HEIGHT = 22;
+const DOCK_TOP_GAP = 6;
+const DOCK_VERTICAL_PADDING = 12;
+const DOCK_EXTRA_SIDE_MARGIN = 6;
+const DOCK_COLUMN_GAP = 14;
 
 const getBoardItemKey = (item: BoardItem) =>
   item.kind === 'weather' ? item.id : item.label;
@@ -149,7 +153,7 @@ const Icon = memo(function Icon({
   );
 
   const iconCornerRadius = Math.round(size * 0.23);
-  const imageSize = size - 12;
+  const imageSize = size - 18;
 
   return (
     <Animated.View
@@ -296,14 +300,16 @@ export default function AppleIconSort() {
       (availableBoardWidth - GRID_HORIZONTAL_PADDING * 2 - GRID_COLUMN_GAP * (GRID_COLUMNS - 1)) /
       GRID_COLUMNS;
 
-    return Math.max(
+    const clamped = Math.max(
       GRID_CELL_MIN_SIZE,
       Math.min(GRID_CELL_MAX_SIZE, computedCellSize)
     );
+
+    return Math.round(clamped * 10) / 10;
   }, [availableBoardWidth]);
 
   const boardContentWidth = useMemo(
-    () => cellSize * GRID_COLUMNS + GRID_COLUMN_GAP * (GRID_COLUMNS - 1),
+    () => Math.round(cellSize * GRID_COLUMNS + GRID_COLUMN_GAP * (GRID_COLUMNS - 1)),
     [cellSize]
   );
 
@@ -320,7 +326,17 @@ export default function AppleIconSort() {
     [boardContentWidth, cellSize]
   );
 
-  const dockHeight = useMemo(() => cellSize + 28, [cellSize]);
+  const dockHeight = useMemo(
+    () => cellSize + DOCK_VERTICAL_PADDING * 2,
+    [cellSize]
+  );
+
+  const dockContentWidth = useMemo(() => {
+    const minimumWidth = cellSize * DOCK_CAPACITY + DOCK_COLUMN_GAP * (DOCK_CAPACITY - 1);
+    const targetWidth = Math.round(boardContentWidth - DOCK_EXTRA_SIDE_MARGIN * 2);
+
+    return Math.max(targetWidth, minimumWidth);
+  }, [boardContentWidth, cellSize]);
 
   const gridCellStyle = useMemo<StyleProp<ViewStyle>>(
     () => ({
@@ -328,18 +344,29 @@ export default function AppleIconSort() {
       flexBasis: cellSize,
       flexGrow: 0,
       flexShrink: 0,
+      height: cellSize + GRID_LABEL_HEIGHT,
       width: cellSize
     }),
     [cellSize]
   );
 
-  const dockCellStyle = gridCellStyle;
+  const dockCellStyle = useMemo<StyleProp<ViewStyle>>(
+    () => ({
+      alignItems: 'center',
+      flexBasis: cellSize,
+      flexGrow: 0,
+      flexShrink: 0,
+      height: cellSize,
+      width: cellSize
+    }),
+    [cellSize]
+  );
 
   const dockBackgroundStyle = useMemo<StyleProp<ViewStyle>>(
     () => ({
       height: dockHeight,
-      left: GRID_HORIZONTAL_PADDING,
-      right: GRID_HORIZONTAL_PADDING
+      left: GRID_HORIZONTAL_PADDING + DOCK_EXTRA_SIDE_MARGIN,
+      right: GRID_HORIZONTAL_PADDING + DOCK_EXTRA_SIDE_MARGIN
     }),
     [dockHeight]
   );
@@ -347,7 +374,8 @@ export default function AppleIconSort() {
   const dockZoneStyle = useMemo<StyleProp<ViewStyle>>(
     () => ({
       height: dockHeight,
-      paddingHorizontal: GRID_HORIZONTAL_PADDING,
+      paddingHorizontal: GRID_HORIZONTAL_PADDING + DOCK_EXTRA_SIDE_MARGIN,
+      paddingVertical: DOCK_VERTICAL_PADDING,
       width: boardWidth
     }),
     [boardWidth, dockHeight]
@@ -578,7 +606,7 @@ export default function AppleIconSort() {
             style={[
               styles.dockSection,
               {
-                paddingBottom: insets.bottom + 2,
+                paddingBottom: Math.max(insets.bottom, 12),
                 paddingTop: DOCK_TOP_GAP
               }
             ]}>
@@ -600,13 +628,13 @@ export default function AppleIconSort() {
                 ]}>
                 <Sortable.Flex
                   alignItems='center'
-                  columnGap={GRID_COLUMN_GAP}
+                  columnGap={DOCK_COLUMN_GAP}
                   flexDirection='row'
                   inactiveItemOpacity={1}
                   onDragEnd={handleDockDragEnd}
                   onDragStart={handleDockDragStart}
                   rowGap={0}
-                  style={{ width: boardContentWidth }}>
+                  style={{ width: dockContentWidth }}>
                   {dockItems.map(item => (
                     <View key={item.label} style={dockCellStyle}>
                       <Icon
@@ -689,7 +717,7 @@ const styles = StyleSheet.create({
   },
   icon: {
     alignItems: 'center',
-    gap: 8
+    gap: 6
   },
   imageContainer: {
     alignItems: 'center',
@@ -698,7 +726,7 @@ const styles = StyleSheet.create({
     boxShadow: '0px 8px 16px rgba(0,0,0,0.18)',
     justifyContent: 'center',
     overflow: 'hidden',
-    padding: 8
+    padding: 6
   },
   text: {
     color: 'white',
@@ -789,7 +817,7 @@ const styles = StyleSheet.create({
   },
   dockZone: {
     justifyContent: 'center',
-    paddingVertical: 12
+    paddingVertical: 0
   },
   zoneContainer: {
     flex: 1

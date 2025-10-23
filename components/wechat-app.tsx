@@ -1,12 +1,6 @@
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { memo, useMemo } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export type WeChatTabKey = 'chats' | 'contacts' | 'discover' | 'me';
@@ -18,27 +12,62 @@ type WeChatAppProps = {
 };
 
 type TabItem = {
-  icon: string;
+  activeIcon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Ionicons.glyphMap;
   key: WeChatTabKey;
   label: string;
 };
 
 const TAB_ITEMS: TabItem[] = [
-  { icon: '💬', key: 'chats', label: '聊天' },
-  { icon: '👥', key: 'contacts', label: '通讯录' },
-  { icon: '✨', key: 'discover', label: '发现' },
-  { icon: '😊', key: 'me', label: '我的' }
+  { activeIcon: 'chatbubble-ellipses', icon: 'chatbubble-ellipses-outline', key: 'chats', label: '微信' },
+  { activeIcon: 'people', icon: 'people-outline', key: 'contacts', label: '通讯录' },
+  { activeIcon: 'compass', icon: 'compass-outline', key: 'discover', label: '发现' },
+  { activeIcon: 'person', icon: 'person-outline', key: 'me', label: '我' }
 ];
 
 type ChatThread = {
+  avatar: string;
   id: string;
   message: string;
+  muted?: boolean;
   name: string;
   time: string;
   unread?: number;
-  avatar: string;
-  status?: string;
 };
+
+const CHAT_THREADS: ChatThread[] = [
+  {
+    avatar: '微',
+    id: 'thread-1',
+    message: '企业周报已生成，点击查看详情。',
+    name: '企业微信助手',
+    time: '09:20',
+    unread: 2
+  },
+  {
+    avatar: '林',
+    id: 'thread-2',
+    message: '今天的设计稿我已经传到云盘了～',
+    name: '林晓晓',
+    time: '昨天'
+  },
+  {
+    avatar: '团',
+    id: 'thread-3',
+    message: '欢迎加入「周末野餐团」，一起发现生活里的小确幸！',
+    name: '周末野餐团',
+    time: '周三',
+    unread: 6
+  },
+  {
+    avatar: '设',
+    id: 'thread-4',
+    message: '最新一期的灵感合集上新啦～',
+    name: '知音灵感营',
+    time: '周二',
+    muted: true
+  }
+];
 
 type ContactSection = {
   id: string;
@@ -52,136 +81,136 @@ type ContactSection = {
   title: string;
 };
 
-const CHAT_THREADS: ChatThread[] = [
-  {
-    avatar: '微',
-    id: 'thread-1',
-    message: '已为你准备好团队同步的会议纪要。',
-    name: '企业微信助手',
-    time: '09:20',
-    unread: 3
-  },
-  {
-    avatar: '林',
-    id: 'thread-2',
-    message: '今天的设计稿我已经更新在云盘里。',
-    name: '林晓晓',
-    time: '昨天',
-    status: '已读'
-  },
-  {
-    avatar: '团',
-    id: 'thread-3',
-    message: '欢迎加入「热爱生活研究所」🎉',
-    name: '周末野餐团',
-    time: '周三',
-    unread: 6
-  }
-];
-
 const CONTACT_SECTIONS: ContactSection[] = [
   {
-    id: 'quick',
+    id: 'services',
     items: [
-      {
-        description: '管理好友请求与新的联系人',
-        icon: '🧑‍🤝‍🧑',
-        id: 'new-friends',
-        label: '新的朋友',
-        tint: '#60a5fa'
-      },
-      { description: '快速找到身边的朋友', icon: '📡', id: 'radar', label: '雷达加朋友', tint: '#34d399' },
-      { description: '扫一扫即可添加', icon: '🔲', id: 'scan', label: '扫一扫', tint: '#facc15' }
+      { description: '查看新的好友申请', icon: '🧑‍🤝‍🧑', id: 'new-friends', label: '新的朋友', tint: '#10b981' },
+      { description: '雷达加朋友', icon: '📡', id: 'radar', label: '雷达加朋友', tint: '#38bdf8' },
+      { description: '扫一扫加好友', icon: '🔲', id: 'scan', label: '扫一扫', tint: '#f97316' },
+      { description: '手机通讯录联系人', icon: '📱', id: 'mobile', label: '手机联系人', tint: '#8b5cf6' }
     ],
-    title: '常用工具'
+    title: '常用功能'
   },
   {
-    id: 'friends',
+    id: 'contacts',
     items: [
       { icon: '👩🏻‍💼', id: 'amy', label: 'Amy Chen', tint: '#f59e0b' },
-      { icon: '🧑🏽‍💻', id: 'leo', label: 'Leo Tan', tint: '#38bdf8' },
-      { icon: '🎨', id: 'studio', label: '北岸设计工作室', tint: '#a855f7' }
+      { icon: '🧑🏽‍💻', id: 'leo', label: 'Leo Tan', tint: '#0ea5e9' },
+      { icon: '🎨', id: 'studio', label: '北岸设计工作室', tint: '#a855f7' },
+      { icon: '🎧', id: 'pod', label: '创意播客小组', tint: '#f97316' }
     ],
-    title: '好友与服务号'
+    title: '我的联系人'
   }
 ];
 
 const DISCOVER_FEATURES = [
-  { description: '记录生活与灵感', icon: '📸', id: 'moments', label: '朋友圈', tint: '#fb7185' },
-  { description: '精选创作者内容', icon: '🎥', id: 'channels', label: '视频号', tint: '#60a5fa' },
-  { description: '探索附近和城市活动', icon: '🧭', id: 'nearby', label: '附近的精彩', tint: '#4ade80' },
-  { description: '小程序、游戏与工具集合', icon: '🧩', id: 'mini-apps', label: '小程序', tint: '#f97316' }
+  {
+    description: '记录生活的精彩瞬间',
+    icon: '🌄',
+    id: 'moments',
+    label: '朋友圈',
+    tint: '#fb7185'
+  },
+  {
+    description: '精选创作者内容',
+    icon: '🎬',
+    id: 'channels',
+    label: '视频号',
+    tint: '#38bdf8'
+  },
+  {
+    description: '发现附近的生活方式',
+    icon: '🧭',
+    id: 'nearby',
+    label: '附近',
+    tint: '#4ade80'
+  },
+  {
+    description: '小程序、游戏与工具集合',
+    icon: '🧩',
+    id: 'mini-apps',
+    label: '小程序',
+    tint: '#facc15'
+  }
 ] as const;
 
 const ME_SHORTCUTS = [
-  { icon: '💳', id: 'pay', label: '服务 · 微信支付', tint: '#34d399' },
-  { icon: '📁', id: 'favorites', label: '收藏', tint: '#818cf8' },
-  { icon: '🗂️', id: 'cards', label: '卡包', tint: '#fbbf24' },
+  { icon: '💳', id: 'pay', label: '服务 · 微信支付', tint: '#10b981' },
+  { icon: '⭐', id: 'favorites', label: '收藏', tint: '#6366f1' },
+  { icon: '🗂️', id: 'cards', label: '卡包', tint: '#f59e0b' },
   { icon: '⚙️', id: 'settings', label: '设置', tint: '#94a3b8' }
 ] as const;
 
+type SectionProps = {
+  title: string;
+};
+
+const SectionHeader = ({ title }: SectionProps) => (
+  <Text style={styles.sectionHeader}>{title}</Text>
+);
+
 const ChatList = ({ threads }: { threads: ChatThread[] }) => (
   <View style={styles.sectionBlock}>
-    <Text style={styles.sectionTitle}>最近聊天</Text>
-    <View style={styles.cardStack}>
-      {threads.map(thread => (
-        <Pressable key={thread.id} style={styles.surfaceCard}>
-          <View style={styles.surfaceAccent}>
-            <LinearGradient
-              colors={['rgba(96, 165, 250, 0.25)', 'rgba(129, 140, 248, 0.05)']}
-              end={{ x: 1, y: 1 }}
-              start={{ x: 0, y: 0 }}
-              style={styles.avatarBackground}>
+    <SectionHeader title="聊天" />
+    <View style={styles.cardSurface}>
+      {threads.map((thread, index) => {
+        const isLast = index === threads.length - 1;
+        return (
+          <Pressable key={thread.id} style={[styles.chatRow, isLast && styles.rowWithoutBorder]}>
+            <View style={styles.avatarWrapper}>
               <Text style={styles.avatarText}>{thread.avatar}</Text>
-            </LinearGradient>
-          </View>
-          <View style={styles.surfaceBody}>
-            <View style={styles.surfaceHeader}>
-              <Text style={styles.surfaceTitle}>{thread.name}</Text>
-              <Text style={styles.surfaceTime}>{thread.time}</Text>
             </View>
-            <Text numberOfLines={1} style={styles.surfaceSubtitle}>
-              {thread.message}
-            </Text>
-          </View>
-          <View style={styles.surfaceMeta}>
-            {typeof thread.unread === 'number' ? (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>{thread.unread}</Text>
+            <View style={styles.chatContent}>
+              <View style={styles.chatHeader}>
+                <Text style={styles.chatName}>{thread.name}</Text>
+                <Text style={styles.chatTime}>{thread.time}</Text>
               </View>
-            ) : (
-              <Text style={styles.statusText}>{thread.status}</Text>
-            )}
-          </View>
-        </Pressable>
-      ))}
+              <Text numberOfLines={1} style={styles.chatSnippet}>
+                {thread.message}
+              </Text>
+            </View>
+            <View style={styles.chatMeta}>
+              {typeof thread.unread === 'number' ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadText}>{thread.unread}</Text>
+                </View>
+              ) : thread.muted ? (
+                <Ionicons color="#9ca3af" name="volume-mute" size={18} />
+              ) : null}
+            </View>
+          </Pressable>
+        );
+      })}
     </View>
   </View>
 );
 
 const ContactList = ({ sections }: { sections: ContactSection[] }) => (
-  <View style={styles.sectionGap}>
+  <View style={styles.sectionBlock}>
+    <SectionHeader title="联系人" />
     {sections.map(section => (
-      <View key={section.id} style={styles.sectionBlock}>
-        <Text style={styles.sectionTitle}>{section.title}</Text>
-        <View style={styles.cardStack}>
-          {section.items.map(item => (
-            <Pressable key={item.id} style={styles.surfaceRow}>
-              <View style={[styles.iconChip, { backgroundColor: `${item.tint}33` }]}> 
-                <Text style={[styles.iconChipText, { color: item.tint }]}>{item.icon}</Text>
+      <View key={section.id} style={styles.cardSurface}>
+        <Text style={styles.subSectionTitle}>{section.title}</Text>
+        {section.items.map((item, index) => {
+          const isLast = index === section.items.length - 1;
+          return (
+            <Pressable key={item.id} style={[styles.listRow, isLast && styles.rowWithoutBorder]}>
+              <View style={[styles.listIcon, { backgroundColor: `${item.tint}1a` }]}> 
+                <Text style={[styles.listIconText, { color: item.tint }]}>{item.icon}</Text>
               </View>
-              <View style={styles.surfaceBody}>
-                <Text style={styles.surfaceTitle}>{item.label}</Text>
+              <View style={styles.listContent}>
+                <Text style={styles.listLabel}>{item.label}</Text>
                 {item.description ? (
-                  <Text numberOfLines={1} style={styles.surfaceSubtitle}>
+                  <Text numberOfLines={1} style={styles.listDescription}>
                     {item.description}
                   </Text>
                 ) : null}
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <Ionicons color="#cbd5f5" name="chevron-forward" size={18} />
             </Pressable>
-          ))}
-        </View>
+          );
+        })}
       </View>
     ))}
   </View>
@@ -189,51 +218,50 @@ const ContactList = ({ sections }: { sections: ContactSection[] }) => (
 
 const DiscoverList = () => (
   <View style={styles.sectionBlock}>
-    <Text style={styles.sectionTitle}>今日推荐</Text>
-    <View style={styles.discoverGrid}>
-      {DISCOVER_FEATURES.map(feature => (
-        <Pressable key={feature.id} style={styles.discoverCard}>
-          <View style={[styles.iconChip, { backgroundColor: `${feature.tint}33` }]}> 
-            <Text style={[styles.iconChipText, { color: feature.tint }]}>{feature.icon}</Text>
-          </View>
-          <Text style={styles.surfaceTitle}>{feature.label}</Text>
-          <Text numberOfLines={2} style={styles.surfaceSubtitle}>
+    <SectionHeader title="今日推荐" />
+    {DISCOVER_FEATURES.map(feature => (
+      <Pressable key={feature.id} style={styles.discoverRow}>
+        <View style={[styles.discoverIcon, { backgroundColor: `${feature.tint}1a` }]}> 
+          <Text style={[styles.discoverIconText, { color: feature.tint }]}>{feature.icon}</Text>
+        </View>
+        <View style={styles.discoverContent}>
+          <Text style={styles.discoverLabel}>{feature.label}</Text>
+          <Text numberOfLines={2} style={styles.discoverDescription}>
             {feature.description}
           </Text>
-        </Pressable>
-      ))}
-    </View>
+        </View>
+        <Ionicons color="#cbd5f5" name="chevron-forward" size={18} />
+      </Pressable>
+    ))}
   </View>
 );
 
 const MePanel = () => (
-  <View style={styles.sectionGap}>
-    <LinearGradient
-      colors={['rgba(96, 165, 250, 0.2)', 'rgba(129, 140, 248, 0.05)']}
-      end={{ x: 1, y: 1 }}
-      start={{ x: 0, y: 0 }}
-      style={styles.profileCard}>
+  <View style={styles.sectionBlock}>
+    <SectionHeader title="我" />
+    <View style={styles.profileCard}>
       <View style={styles.profileAvatar}>
         <Text style={styles.profileAvatarText}>ZY</Text>
       </View>
-      <View style={styles.profileInfo}>
+      <View style={styles.profileDetails}>
         <Text style={styles.profileName}>知音实验室</Text>
-        <Text style={styles.profileSubtitle}>探索创造力与效率的数字工作室</Text>
+        <Text style={styles.profileSubtitle}>微信号：zy_lab</Text>
       </View>
-      <View style={styles.profileTag}>
-        <Text style={styles.profileTagText}>WeChat ID · zy_lab</Text>
-      </View>
-    </LinearGradient>
-    <View style={styles.cardStack}>
-      {ME_SHORTCUTS.map(shortcut => (
-        <Pressable key={shortcut.id} style={styles.surfaceRow}>
-          <View style={[styles.iconChip, { backgroundColor: `${shortcut.tint}33` }]}> 
-            <Text style={[styles.iconChipText, { color: shortcut.tint }]}>{shortcut.icon}</Text>
-          </View>
-          <Text style={styles.surfaceTitle}>{shortcut.label}</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-      ))}
+      <Ionicons color="#d1d5db" name="qr-code" size={24} />
+    </View>
+    <View style={styles.cardSurface}>
+      {ME_SHORTCUTS.map((shortcut, index) => {
+        const isLast = index === ME_SHORTCUTS.length - 1;
+        return (
+          <Pressable key={shortcut.id} style={[styles.listRow, isLast && styles.rowWithoutBorder]}>
+            <View style={[styles.listIcon, { backgroundColor: `${shortcut.tint}1a` }]}> 
+              <Text style={[styles.listIconText, { color: shortcut.tint }]}>{shortcut.icon}</Text>
+            </View>
+            <Text style={styles.listLabel}>{shortcut.label}</Text>
+            <Ionicons color="#cbd5f5" name="chevron-forward" size={18} />
+          </Pressable>
+        );
+      })}
     </View>
   </View>
 );
@@ -255,52 +283,56 @@ const WeChatApp = memo(function WeChatApp({ activeTab, onClose, onTabChange }: W
   }, [activeTab]);
 
   return (
-    <View pointerEvents='box-none' style={StyleSheet.absoluteFill}>
-      <LinearGradient
-        colors={['rgba(4, 7, 16, 0.96)', 'rgba(6, 12, 24, 0.98)']}
-        end={{ x: 0.7, y: 1 }}
-        start={{ x: 0, y: 0 }}
-        style={[StyleSheet.absoluteFill, styles.overlayBackground]}
-      />
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <View style={styles.backdrop} />
       <SafeAreaView edges={['top', 'bottom']} style={StyleSheet.absoluteFill}>
-        <View style={styles.overlayContainer}>
-          <View style={styles.overlayHeader}>
-            <View>
-              <Text style={styles.appTitle}>WeChat</Text>
-              <Text style={styles.appSubtitle}>连接人与灵感的灵感工作台</Text>
-            </View>
+        <View style={styles.overlayRoot}>
+          <View style={styles.phoneFrame}>
             <Pressable onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>×</Text>
+              <Ionicons color="#0f172a" name="close" size={20} />
             </Pressable>
-          </View>
-          <View style={styles.utilityRow}>
-            <Pressable style={styles.utilityButton}>
-              <Text style={styles.utilityButtonText}>🔍 全局搜索</Text>
-            </Pressable>
-            <Pressable style={styles.utilityButton}>
-              <Text style={styles.utilityButtonText}>➕ 发起聊天</Text>
-            </Pressable>
-            <Pressable style={styles.utilityButton}>
-              <Text style={styles.utilityButtonText}>📌 我的收藏</Text>
-            </Pressable>
-          </View>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            style={styles.content}>
-            {content}
-          </ScrollView>
-          <View style={styles.tabBar}>
-            {TAB_ITEMS.map(tab => {
-              const isActive = tab.key === activeTab;
-              return (
-                <Pressable key={tab.key} onPress={() => onTabChange(tab.key)} style={styles.tabItem}>
-                  <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>{tab.icon}</Text>
-                  <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
-                  {isActive ? <View style={styles.tabIndicator} /> : null}
-                </Pressable>
-              );
-            })}
+            <View style={styles.appShell}>
+              <View style={styles.statusBar}>
+                <Text style={styles.statusTime}>19:47</Text>
+                <View style={styles.statusIcons}>
+                  <Text style={styles.statusGlyph}>📶</Text>
+                  <Text style={styles.statusGlyph}>📡</Text>
+                  <Text style={styles.statusGlyph}>🔋</Text>
+                </View>
+              </View>
+              <View style={styles.navBar}>
+                <Text style={styles.navTitle}>微信</Text>
+                <View style={styles.navActions}>
+                  <Pressable style={styles.navIconButton}>
+                    <Ionicons color="#111827" name="search" size={20} />
+                  </Pressable>
+                  <Pressable style={styles.navIconButton}>
+                    <Ionicons color="#111827" name="add" size={22} />
+                  </Pressable>
+                </View>
+              </View>
+              <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                style={styles.scrollView}>
+                {content}
+              </ScrollView>
+              <View style={styles.tabBar}>
+                {TAB_ITEMS.map(tab => {
+                  const isActive = tab.key === activeTab;
+                  return (
+                    <Pressable key={tab.key} onPress={() => onTabChange(tab.key)} style={styles.tabItem}>
+                      <Ionicons
+                        color={isActive ? '#07c160' : '#707275'}
+                        name={isActive ? tab.activeIcon : tab.icon}
+                        size={24}
+                      />
+                      <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
           </View>
         </View>
       </SafeAreaView>
@@ -311,272 +343,309 @@ const WeChatApp = memo(function WeChatApp({ activeTab, onClose, onTabChange }: W
 export default WeChatApp;
 
 const styles = StyleSheet.create({
-  appSubtitle: {
-    color: 'rgba(226, 232, 255, 0.72)',
-    fontSize: 14,
-    marginTop: 6
-  },
-  appTitle: {
-    color: '#f9fafb',
-    fontSize: 28,
-    fontWeight: '700'
-  },
-  avatarBackground: {
-    alignItems: 'center',
-    borderRadius: 16,
-    height: 54,
-    justifyContent: 'center',
-    width: 54
+  appShell: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 32,
+    flex: 1,
+    overflow: 'hidden'
   },
   avatarText: {
-    color: '#f9fafb',
-    fontSize: 22,
-    fontWeight: '700'
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '600'
   },
-  cardStack: {
-    gap: 12
+  avatarWrapper: {
+    alignItems: 'center',
+    backgroundColor: '#12b44a',
+    borderRadius: 16,
+    height: 48,
+    justifyContent: 'center',
+    marginRight: 12,
+    width: 48
   },
-  chevron: {
-    color: 'rgba(226, 232, 255, 0.45)',
-    fontSize: 24,
+  backdrop: {
+    backgroundColor: 'rgba(3, 7, 18, 0.68)',
+    ...StyleSheet.absoluteFillObject
+  },
+  cardSurface: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    marginHorizontal: 16,
+    marginTop: 8,
+    overflow: 'hidden'
+  },
+  chatContent: {
+    flex: 1
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4
+  },
+  chatMeta: {
+    alignItems: 'flex-end',
     marginLeft: 12
+  },
+  chatName: {
+    color: '#111827',
+    fontSize: 16,
+    fontWeight: '600'
+  },
+  chatRow: {
+    alignItems: 'center',
+    borderBottomColor: '#f3f4f6',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 14
+  },
+  chatSnippet: {
+    color: '#6b7280',
+    fontSize: 13
+  },
+  chatTime: {
+    color: '#9ca3af',
+    fontSize: 12
   },
   closeButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
-    borderRadius: 18,
+    backgroundColor: '#f8fafc',
+    borderRadius: 999,
     height: 36,
     justifyContent: 'center',
+    position: 'absolute',
+    right: 12,
+    top: -18,
     width: 36
   },
-  closeButtonText: {
-    color: '#e2e8f0',
-    fontSize: 22,
-    fontWeight: '600'
+  discoverContent: {
+    flex: 1
   },
-  content: {
-    flex: 1,
-    width: '100%'
+  discoverDescription: {
+    color: '#6b7280',
+    fontSize: 13,
+    marginTop: 4
   },
-  discoverCard: {
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-    borderColor: 'rgba(148, 163, 184, 0.14)',
-    borderRadius: 24,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 12,
-    padding: 18
-  },
-  discoverGrid: {
-    columnGap: 14,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    rowGap: 14
-  },
-  iconChip: {
+  discoverIcon: {
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 14,
     height: 44,
     justifyContent: 'center',
+    marginRight: 14,
     width: 44
   },
-  iconChipText: {
-    fontSize: 20,
+  discoverIconText: {
+    fontSize: 20
+  },
+  discoverLabel: {
+    color: '#111827',
+    fontSize: 16,
+    fontWeight: '600'
+  },
+  discoverRow: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 16
+  },
+  listContent: {
+    flex: 1
+  },
+  listDescription: {
+    color: '#9ca3af',
+    fontSize: 12,
+    marginTop: 4
+  },
+  listIcon: {
+    alignItems: 'center',
+    borderRadius: 12,
+    height: 36,
+    justifyContent: 'center',
+    marginRight: 12,
+    width: 36
+  },
+  listIconText: {
+    fontSize: 18,
+    fontWeight: '600'
+  },
+  listLabel: {
+    color: '#111827',
+    fontSize: 15
+  },
+  listRow: {
+    alignItems: 'center',
+    borderBottomColor: '#f3f4f6',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 14
+  },
+  navActions: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  navBar: {
+    alignItems: 'center',
+    backgroundColor: '#ededed',
+    borderBottomColor: '#e5e7eb',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 12
+  },
+  navIconButton: {
+    alignItems: 'center',
+    borderRadius: 16,
+    height: 32,
+    justifyContent: 'center',
+    width: 32
+  },
+  navTitle: {
+    color: '#111827',
+    fontSize: 18,
     fontWeight: '700'
   },
-  overlayBackground: {
-    borderCurve: 'continuous'
-  },
-  overlayContainer: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16
-  },
-  overlayHeader: {
+  overlayRoot: {
     alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between'
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 32
+  },
+  phoneFrame: {
+    backgroundColor: '#050b18',
+    borderRadius: 44,
+    height: 720,
+    padding: 14,
+    shadowColor: '#0f172a',
+    shadowOffset: { height: 20, width: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 40,
+    width: 360
   },
   profileAvatar: {
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    borderRadius: 24,
-    height: 64,
+    backgroundColor: '#12b44a',
+    borderRadius: 16,
+    height: 60,
     justifyContent: 'center',
-    width: 64
+    marginRight: 16,
+    width: 60
   },
   profileAvatarText: {
-    color: '#e0f2fe',
+    color: '#ffffff',
     fontSize: 22,
     fontWeight: '700'
   },
   profileCard: {
     alignItems: 'center',
-    borderRadius: 28,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
     flexDirection: 'row',
-    gap: 16,
-    padding: 20
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 18
   },
-  profileInfo: {
-    flex: 1,
-    gap: 6
+  profileDetails: {
+    flex: 1
   },
   profileName: {
-    color: '#f8fafc',
-    fontSize: 20,
+    color: '#111827',
+    fontSize: 18,
     fontWeight: '700'
   },
   profileSubtitle: {
-    color: 'rgba(226, 232, 255, 0.75)',
-    fontSize: 13
+    color: '#6b7280',
+    fontSize: 13,
+    marginTop: 4
   },
-  profileTag: {
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 6
-  },
-  profileTagText: {
-    color: 'rgba(148, 163, 184, 0.85)',
-    fontSize: 12
+  rowWithoutBorder: {
+    borderBottomWidth: 0
   },
   scrollContent: {
-    paddingBottom: 120,
-    paddingTop: 18
+    paddingBottom: 100
+  },
+  scrollView: {
+    flex: 1
   },
   sectionBlock: {
-    gap: 16
+    marginTop: 12
   },
-  sectionGap: {
-    gap: 24
+  sectionHeader: {
+    color: '#9ca3af',
+    fontSize: 12,
+    marginBottom: 4,
+    marginLeft: 24,
+    textTransform: 'uppercase'
   },
-  sectionTitle: {
-    color: 'rgba(226, 232, 255, 0.8)',
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  statusText: {
-    color: 'rgba(148, 163, 184, 0.9)',
-    fontSize: 12
-  },
-  surfaceAccent: {
-    marginRight: 16
-  },
-  surfaceBody: {
-    flex: 1,
-    gap: 6
-  },
-  surfaceCard: {
+  statusBar: {
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-    borderColor: 'rgba(148, 163, 184, 0.14)',
-    borderRadius: 24,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    padding: 18
-  },
-  surfaceHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between'
-  },
-  surfaceMeta: {
-    alignItems: 'flex-end',
-    gap: 8,
-    marginLeft: 12
-  },
-  surfaceRow: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
-    borderColor: 'rgba(148, 163, 184, 0.14)',
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    columnGap: 16,
-    flexDirection: 'row',
-    paddingHorizontal: 18,
-    paddingVertical: 14
-  },
-  surfaceSubtitle: {
-    color: 'rgba(203, 213, 225, 0.8)',
-    fontSize: 13
-  },
-  surfaceTime: {
-    color: 'rgba(148, 163, 184, 0.8)',
-    fontSize: 12
-  },
-  surfaceTitle: {
-    color: '#f8fafc',
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  tabBar: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
-    borderColor: 'rgba(148, 163, 184, 0.12)',
-    borderRadius: 28,
-    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 12
+    paddingVertical: 10
   },
-  tabIcon: {
-    color: 'rgba(148, 163, 184, 0.7)',
-    fontSize: 20,
-    marginBottom: 4,
-    textAlign: 'center'
+  statusGlyph: {
+    fontSize: 13
   },
-  tabIconActive: {
-    color: '#60a5fa'
+  statusIcons: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6
   },
-  tabIndicator: {
-    backgroundColor: '#60a5fa',
-    borderRadius: 999,
-    height: 3,
-    marginTop: 6,
-    width: 36
+  statusTime: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  subSectionTitle: {
+    color: '#6b7280',
+    fontSize: 12,
+    letterSpacing: 0.5,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    textTransform: 'uppercase'
+  },
+  tabBar: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderTopColor: '#e5e7eb',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingBottom: 8,
+    paddingTop: 8
   },
   tabItem: {
     alignItems: 'center',
     flex: 1
   },
   tabLabel: {
-    color: 'rgba(148, 163, 184, 0.7)',
-    fontSize: 12,
-    fontWeight: '600'
+    color: '#707275',
+    fontSize: 11,
+    marginTop: 4
   },
   tabLabelActive: {
-    color: '#60a5fa'
+    color: '#07c160',
+    fontWeight: '600'
   },
   unreadBadge: {
     alignItems: 'center',
-    backgroundColor: '#60a5fa',
+    backgroundColor: '#f43f5e',
     borderRadius: 999,
-    minWidth: 24,
+    minWidth: 20,
     paddingHorizontal: 6,
-    paddingVertical: 4
+    paddingVertical: 2
   },
   unreadText: {
-    color: '#0f172a',
+    color: '#ffffff',
     fontSize: 12,
-    fontWeight: '700'
-  },
-  utilityButton: {
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-    borderColor: 'rgba(148, 163, 184, 0.18)',
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 18,
-    paddingVertical: 12
-  },
-  utilityButtonText: {
-    color: 'rgba(226, 232, 255, 0.85)',
-    fontSize: 13,
     fontWeight: '600'
-  },
-  utilityRow: {
-    columnGap: 12,
-    flexDirection: 'row',
-    marginTop: 18
   }
 });

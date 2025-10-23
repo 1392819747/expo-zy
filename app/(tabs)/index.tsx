@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+// eslint-disable-next-line import/no-unresolved
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
@@ -9,6 +10,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useColorScheme,
   useWindowDimensions,
   View
 } from 'react-native';
@@ -279,6 +281,32 @@ const WeatherWidget = memo(function WeatherWidget({
   size
 }: WeatherWidgetProps) {
   const { isActive } = useItemContext();
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  const widgetGradient = useMemo(
+    () =>
+      isDarkMode
+        ? ['#0b1120', '#13203a', '#1c2a44']
+        : ['#397af7', '#4d8ff9', '#69a8ff'],
+    [isDarkMode]
+  );
+
+  const forecastGradient = useMemo(
+    () =>
+      isDarkMode
+        ? ['rgba(148, 163, 184, 0.18)', 'rgba(148, 163, 184, 0.05)']
+        : ['rgba(255, 255, 255, 0.65)', 'rgba(255, 255, 255, 0.3)'],
+    [isDarkMode]
+  );
+
+  const badgeBackground = isDarkMode ? 'rgba(148, 163, 184, 0.18)' : 'rgba(255, 255, 255, 0.2)';
+  const dividerTint = isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.12)';
+  const rangeCardTint = isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.35)';
+  const rangeLabelColor = isDarkMode ? 'rgba(226, 232, 255, 0.7)' : 'rgba(15, 23, 42, 0.65)';
+  const rangeValueColor = isDarkMode ? '#f8fafc' : '#0f172a';
+  const forecastTimeColor = isDarkMode ? 'rgba(226, 232, 255, 0.75)' : 'rgba(15, 23, 42, 0.6)';
+  const forecastTempColor = isDarkMode ? '#f8fafc' : '#0f172a';
 
   const shakeProgress = useDerivedValue(() =>
     isEditing.value
@@ -310,7 +338,7 @@ const WeatherWidget = memo(function WeatherWidget({
         { height: size.height, width: size.width }
       ]}>
       <LinearGradient
-        colors={['#1a1f38', '#1f2c5c', '#274782']}
+        colors={widgetGradient}
         end={{ x: 1, y: 1 }}
         start={{ x: 0, y: 0 }}
         style={[styles.widgetContainer, { height: size.height, width: size.width }]}>
@@ -319,31 +347,39 @@ const WeatherWidget = memo(function WeatherWidget({
             <Text style={styles.widgetLocation}>{item.location}</Text>
             <Text style={styles.widgetCondition}>{`今天 · ${item.condition}`}</Text>
           </View>
-          <View style={styles.widgetBadge}>
+          <View style={[styles.widgetBadge, { backgroundColor: badgeBackground }]}> 
             <Text style={styles.widgetBadgeText}>🌤️</Text>
           </View>
         </View>
         <View style={styles.widgetTemperatureRow}>
           <Text style={styles.widgetTemperature}>{item.temperature}</Text>
-          <View style={styles.widgetRangeCard}>
-            <Text style={styles.widgetRangeLabel}>最高</Text>
-            <Text style={styles.widgetRangeValue}>{item.high}</Text>
-            <View style={styles.widgetRangeDivider} />
-            <Text style={styles.widgetRangeLabel}>最低</Text>
-            <Text style={styles.widgetRangeValue}>{item.low}</Text>
+          <View style={[styles.widgetRangeCard, { backgroundColor: rangeCardTint }]}> 
+            <View style={styles.widgetRangeColumn}>
+              <Text style={[styles.widgetRangeLabel, { color: rangeLabelColor }]}>最高</Text>
+              <Text style={[styles.widgetRangeValue, { color: rangeValueColor }]}>{item.high}</Text>
+            </View>
+            <View style={[styles.widgetRangeDivider, { backgroundColor: dividerTint }]} />
+            <View style={styles.widgetRangeColumn}>
+              <Text style={[styles.widgetRangeLabel, { color: rangeLabelColor }]}>最低</Text>
+              <Text style={[styles.widgetRangeValue, { color: rangeValueColor }]}>{item.low}</Text>
+            </View>
           </View>
         </View>
-        <View style={styles.widgetDivider} />
+        <View style={[styles.widgetDivider, { backgroundColor: dividerTint }]} />
         <View style={styles.widgetForecastRow}>
           {item.hourly.map(forecastPoint => (
             <LinearGradient
-              colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.05)']}
+              colors={forecastGradient}
               end={{ x: 1, y: 1 }}
               key={forecastPoint.time}
               start={{ x: 0, y: 0 }}
               style={styles.widgetForecastItem}>
-              <Text style={styles.widgetForecastTime}>{forecastPoint.time}</Text>
-              <Text style={styles.widgetForecastTemp}>{forecastPoint.temperature}</Text>
+              <Text style={[styles.widgetForecastTime, { color: forecastTimeColor }]}>
+                {forecastPoint.time}
+              </Text>
+              <Text style={[styles.widgetForecastTemp, { color: forecastTempColor }]}>
+                {forecastPoint.temperature}
+              </Text>
             </LinearGradient>
           ))}
         </View>
@@ -380,6 +416,16 @@ export default function AppleIconSort() {
 
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  const backgroundGradient = useMemo(
+    () =>
+      isDarkMode
+        ? ['#020617', '#0b1120', '#1f2937']
+        : ['#5ac8fa', '#4aa0ff', '#2b6def'],
+    [isDarkMode]
+  );
 
   const availableBoardWidth = useMemo(
     () => Math.min(screenWidth, MAX_BOARD_WIDTH),
@@ -1057,8 +1103,10 @@ export default function AppleIconSort() {
   );
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
-      <StatusBar hidden={isEditing || isWeChatOpen} style="light" />
+    <View style={styles.container}>
+      <LinearGradient colors={backgroundGradient} style={StyleSheet.absoluteFill} />
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <StatusBar hidden={isEditing || isWeChatOpen} style={isDarkMode ? 'light' : 'dark'} />
       {/* Done按钮放在状态栏右上角 */}
       {isEditing && (
         <AnimatedPressable
@@ -1145,7 +1193,8 @@ export default function AppleIconSort() {
                 pointerEvents='none'
                 style={[
                   styles.dockBackground,
-                  dockBackgroundStyle
+                  dockBackgroundStyle,
+                  isDarkMode ? styles.dockBackgroundDark : styles.dockBackgroundLight
                 ]}
               />
               <Sortable.BaseZone
@@ -1154,6 +1203,7 @@ export default function AppleIconSort() {
                 onItemLeave={() => handleZoneLeave('dock')}
                 style={[
                   styles.dockZone,
+                  isDarkMode ? styles.dockZoneDark : styles.dockZoneLight,
                   dockZoneStyle
                 ]}>
                 <Sortable.Flex
@@ -1183,14 +1233,15 @@ export default function AppleIconSort() {
           </View>
         </View>
       </Sortable.MultiZoneProvider>
-      {isWeChatOpen && (
-        <WeChatApp
-          activeTab={activeWeChatTab}
-          onClose={() => setIsWeChatOpen(false)}
-          onTabChange={setActiveWeChatTab}
-        />
-      )}
-    </SafeAreaView>
+        {isWeChatOpen && (
+          <WeChatApp
+            activeTab={activeWeChatTab}
+            onClose={() => setIsWeChatOpen(false)}
+            onTabChange={setActiveWeChatTab}
+          />
+        )}
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -1217,7 +1268,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   },
   container: {
-    backgroundColor: '#3498db',
+    flex: 1
+  },
+  safeArea: {
     flex: 1
   },
   boardRoot: {
@@ -1307,7 +1360,6 @@ const styles = StyleSheet.create({
   },
   widgetBadge: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
     borderRadius: 20,
     height: 44,
     justifyContent: 'center',
@@ -1330,30 +1382,29 @@ const styles = StyleSheet.create({
   },
   widgetRangeCard: {
     alignItems: 'center',
-    backgroundColor: 'rgba(12, 16, 34, 0.4)',
     borderRadius: 18,
     gap: 6,
     paddingHorizontal: 18,
     paddingVertical: 14
   },
+  widgetRangeColumn: {
+    alignItems: 'center',
+    gap: 6
+  },
   widgetRangeLabel: {
-    color: 'rgba(226, 232, 255, 0.7)',
     fontSize: 12,
     fontWeight: '600'
   },
   widgetRangeValue: {
-    color: '#ffffff',
     fontSize: 18,
     fontWeight: '700'
   },
   widgetRangeDivider: {
     alignSelf: 'stretch',
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
     height: StyleSheet.hairlineWidth,
     marginVertical: 4
   },
   widgetDivider: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 999,
     height: StyleSheet.hairlineWidth,
     marginTop: 16
@@ -1371,25 +1422,29 @@ const styles = StyleSheet.create({
     paddingVertical: 10
   },
   widgetForecastTime: {
-    color: 'rgba(226, 232, 255, 0.75)',
     fontSize: 12,
     marginBottom: 6
   },
   widgetForecastTemp: {
-    color: '#ffffff',
     fontSize: 18,
     fontWeight: '700'
   },
   dockBackground: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderCurve: 'continuous',
     borderRadius: 44,
     bottom: 0,
     position: 'absolute',
     shadowColor: '#000',
     shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.15,
     shadowRadius: 18
+  },
+  dockBackgroundLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    shadowOpacity: 0.15
+  },
+  dockBackgroundDark: {
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    shadowOpacity: 0.35
   },
   dockSection: {
     alignItems: 'center',
@@ -1397,8 +1452,18 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   dockZone: {
+    borderRadius: 44,
+    borderWidth: StyleSheet.hairlineWidth,
     justifyContent: 'center',
     paddingVertical: 0
+  },
+  dockZoneLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderColor: 'rgba(255, 255, 255, 0.18)'
+  },
+  dockZoneDark: {
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    borderColor: 'rgba(148, 163, 184, 0.24)'
   },
   zoneContainer: {
     flex: 1

@@ -1,11 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
 import {
   Alert,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -32,6 +33,7 @@ import Sortable, {
 } from 'react-native-sortables';
 
 import WeChatApp, { type WeChatTabKey } from '../../components/wechat-app';
+import { fetchWeatherByLocation, fetchWeatherData, getUserLocation, WeatherData } from '../../services/weatherService';
 
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -92,19 +94,19 @@ const APP_ICONS: AppIconItem[] = [
 ];
 
 const WEATHER_WIDGET: WeatherWidgetItem = {
-  condition: 'Mostly Sunny',
-  high: '24°',
+  condition: '加载中...',
+  high: '--°',
   hourly: [
-    { temperature: '22°', time: 'Now' },
-    { temperature: '23°', time: '2 PM' },
-    { temperature: '23°', time: '3 PM' },
-    { temperature: '21°', time: '4 PM' }
+    { temperature: '--°', time: '加载中1' },
+    { temperature: '--°', time: '加载中2' },
+    { temperature: '--°', time: '加载中3' },
+    { temperature: '--°', time: '加载中4' }
   ],
   id: 'weather-widget',
   kind: 'weather',
-  location: 'San Francisco',
-  low: '18°',
-  temperature: '22°'
+  location: '获取位置中...',
+  low: '--°',
+  temperature: '--°'
 };
 
 const shakeTimingConfig = {
@@ -269,6 +271,7 @@ type WeatherWidgetProps = {
   isEditing: SharedValue<boolean>;
   item: WeatherWidgetItem;
   onDelete: (item: WeatherWidgetItem) => void;
+  onPress?: () => void;
   size: { height: number; width: number };
 };
 
@@ -276,6 +279,7 @@ const WeatherWidget = memo(function WeatherWidget({
   isEditing,
   item,
   onDelete,
+  onPress,
   size
 }: WeatherWidgetProps) {
   const { isActive } = useItemContext();
@@ -309,11 +313,12 @@ const WeatherWidget = memo(function WeatherWidget({
         animatedShakeStyle,
         { height: size.height, width: size.width }
       ]}>
-      <LinearGradient
-        colors={['#1a1f38', '#1f2c5c', '#274782']}
-        end={{ x: 1, y: 1 }}
-        start={{ x: 0, y: 0 }}
-        style={[styles.widgetContainer, { height: size.height, width: size.width }]}>
+      <Pressable onPress={onPress} style={{ flex: 1 }}>
+        <LinearGradient
+          colors={['#1a1f38', '#1f2c5c', '#274782']}
+          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
+          style={[styles.widgetContainer, { height: size.height, width: size.width }]}>
         <View style={styles.widgetHeader}>
           <View>
             <Text style={styles.widgetLocation}>{item.location}</Text>
@@ -325,21 +330,26 @@ const WeatherWidget = memo(function WeatherWidget({
         </View>
         <View style={styles.widgetTemperatureRow}>
           <Text style={styles.widgetTemperature}>{item.temperature}</Text>
+        </View>
+        <View style={styles.widgetRangeSection}>
           <View style={styles.widgetRangeCard}>
-            <Text style={styles.widgetRangeLabel}>最高</Text>
-            <Text style={styles.widgetRangeValue}>{item.high}</Text>
+            <View style={styles.widgetRangeRow}>
+              <Text style={styles.widgetRangeLabel}>最高</Text>
+              <Text style={styles.widgetRangeValue}>{item.high}</Text>
+            </View>
             <View style={styles.widgetRangeDivider} />
-            <Text style={styles.widgetRangeLabel}>最低</Text>
-            <Text style={styles.widgetRangeValue}>{item.low}</Text>
+            <View style={styles.widgetRangeRow}>
+              <Text style={styles.widgetRangeLabel}>最低</Text>
+              <Text style={styles.widgetRangeValue}>{item.low}</Text>
+            </View>
           </View>
         </View>
-        <View style={styles.widgetDivider} />
         <View style={styles.widgetForecastRow}>
-          {item.hourly.map(forecastPoint => (
+          {item.hourly.map((forecastPoint, index) => (
             <LinearGradient
               colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.05)']}
               end={{ x: 1, y: 1 }}
-              key={forecastPoint.time}
+              key={`${forecastPoint.time}-${index}`}
               start={{ x: 0, y: 0 }}
               style={styles.widgetForecastItem}>
               <Text style={styles.widgetForecastTime}>{forecastPoint.time}</Text>
@@ -348,6 +358,7 @@ const WeatherWidget = memo(function WeatherWidget({
           ))}
         </View>
       </LinearGradient>
+      </Pressable>
       <AnimatedPressable
         style={[styles.deleteButton, animatedDeleteButtonStyle]}
         onPress={() => onDelete(item)}>
@@ -358,6 +369,62 @@ const WeatherWidget = memo(function WeatherWidget({
 });
 
 export default function AppleIconSort() {
+  // 天气数据状态
+  const [weatherData, setWeatherData] = useState<WeatherWidgetItem>(WEATHER_WIDGET);
+  const [isLoadingWeather, setIsLoadingWeather] = useState(true);
+
+  // 获取天气数据
+  const loadWeatherData = useCallback(async () => {
+    try {
+      setIsLoadingWeather(true);
+      
+      // 首先尝试获取用户位置
+      const location = await getUserLocation();
+      
+      let weatherInfo: WeatherData;
+      if (location) {
+        // 根据位置获取天气
+        weatherInfo = await fetchWeatherByLocation(location.latitude, location.longitude);
+      } else {
+        // 使用默认天气数据
+        weatherInfo = await fetchWeatherData();
+      }
+      
+      // 更新天气小组件数据
+      setWeatherData({
+        id: 'weather-widget',
+        kind: 'weather',
+        location: weatherInfo.location,
+        condition: weatherInfo.condition,
+        temperature: weatherInfo.temperature,
+        high: weatherInfo.high,
+        low: weatherInfo.low,
+        hourly: weatherInfo.hourly
+      });
+    } catch (error) {
+      console.error('加载天气数据失败:', error);
+      // 保持默认的加载状态
+    } finally {
+      setIsLoadingWeather(false);
+    }
+  }, []);
+
+  // 组件挂载时加载天气数据
+  useEffect(() => {
+    loadWeatherData();
+  }, [loadWeatherData]);
+
+  // 当天气数据更新时，同步更新gridItems中的天气小组件
+  useEffect(() => {
+    setGridItems(prevItems => 
+      prevItems.map(item => 
+        item.kind === 'weather' 
+          ? { ...weatherData, id: weatherData.id }
+          : item
+      )
+    );
+  }, [weatherData]);
+
   const initialDockIcons = useMemo(
     () => APP_ICONS.slice(0, DOCK_CAPACITY).map(icon => ({ ...icon })),
     []
@@ -365,10 +432,10 @@ export default function AppleIconSort() {
   const initialGridItems = useMemo(
     () =>
       [
-        { ...WEATHER_WIDGET, id: WEATHER_WIDGET.id },
+        { ...weatherData, id: weatherData.id },
         ...APP_ICONS.slice(DOCK_CAPACITY).map(icon => ({ ...icon, id: icon.label }))
       ],
-    []
+    [weatherData]
   );
 
   const [gridItems, setGridItems] = useState<BoardItem[]>(initialGridItems);
@@ -518,6 +585,16 @@ export default function AppleIconSort() {
     },
     [isEditing, setActiveWeChatTab, setIsWeChatOpen]
   );
+
+  // 处理天气小组件点击
+  const handleWeatherWidgetPress = useCallback(() => {
+    if (isEditing) {
+      return;
+    }
+    void Haptics.selectionAsync();
+    // 刷新天气数据
+    loadWeatherData();
+  }, [isEditing, loadWeatherData]);
 
   const activeItemRef = useRef<BoardItem | null>(null);
   const activeOriginRef = useRef<DragOrigin | null>(null);
@@ -1108,6 +1185,7 @@ export default function AppleIconSort() {
                             isEditing={isEditingValue}
                             item={item}
                             onDelete={handleBoardItemDelete}
+                            onPress={handleWeatherWidgetPress}
                             size={widgetSize}
                           />
                         </View>
@@ -1288,7 +1366,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     overflow: 'hidden',
-    padding: 20
+    padding: 20,
+    // Android兼容性修复
+    elevation: 0
   },
   widgetHeader: {
     alignItems: 'center',
@@ -1317,24 +1397,50 @@ const styles = StyleSheet.create({
     fontSize: 26
   },
   widgetTemperatureRow: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16
+    justifyContent: 'flex-start',
+    marginTop: 2
+  },
+  widgetRangeSection: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? 25 : 20,
+    right: Platform.OS === 'android' ? 85 : 80,
+    bottom: Platform.OS === 'android' ? 65 : 60,
+    width: Platform.OS === 'android' ? 95 : 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Android兼容性修复
+    elevation: 0,
+    zIndex: 1
   },
   widgetTemperature: {
     color: '#ffffff',
     fontSize: 56,
     fontWeight: '700',
-    letterSpacing: 1
+    letterSpacing: 1,
+    marginLeft: 16
   },
   widgetRangeCard: {
     alignItems: 'center',
     backgroundColor: 'rgba(12, 16, 34, 0.4)',
-    borderRadius: 18,
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 14
+    borderRadius: 16,
+    gap: 3,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    height: '100%',
+    width: '100%',
+    justifyContent: 'center',
+    // Android兼容性修复
+    elevation: 0,
+    overflow: 'hidden'
+  },
+  widgetRangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 8
   },
   widgetRangeLabel: {
     color: 'rgba(226, 232, 255, 0.7)',
@@ -1343,8 +1449,9 @@ const styles = StyleSheet.create({
   },
   widgetRangeValue: {
     color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700'
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 20
   },
   widgetRangeDivider: {
     alignSelf: 'stretch',
@@ -1359,16 +1466,16 @@ const styles = StyleSheet.create({
     marginTop: 16
   },
   widgetForecastRow: {
-    columnGap: 12,
+    columnGap: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 18
+    marginTop: 0
   },
   widgetForecastItem: {
     alignItems: 'center',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 2
   },
   widgetForecastTime: {
     color: 'rgba(226, 232, 255, 0.75)',

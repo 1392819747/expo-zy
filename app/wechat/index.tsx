@@ -1,8 +1,24 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, SafeAreaView, Platform, TextInput, Alert, SectionList } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+  Platform,
+  TextInput,
+  Alert,
+  SectionList,
+  Animated,
+  FlatList,
+} from 'react-native';
 import type { SectionList as SectionListType } from 'react-native';
+import type { Edge } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { Swipeable } from 'react-native-gesture-handler';
 import { 
   Contact, 
   mockContacts, 
@@ -12,14 +28,37 @@ import {
   contactFeatures 
 } from '../../models/contacts';
 
+type ChatItem = {
+  id: string;
+  name: string;
+  message: string;
+  time: string;
+  unread: number;
+  pinned?: boolean;
+};
+
+const initialChats: ChatItem[] = [
+  { id: 'assistant', name: '文件传输助手', message: '你可以在这里接收文件', time: '上午 10:30', unread: 0, pinned: true },
+  { id: '1', name: '张三', message: '好的，明天见！', time: '上午 9:45', unread: 2 },
+  { id: '2', name: '李四', message: '项目进展如何？', time: '昨天', unread: 1 },
+  { id: '3', name: '王五', message: '收到，谢谢！', time: '星期三', unread: 0 },
+  { id: 'group', name: '团队群', message: '赵六: 会议改到下午3点', time: '星期二', unread: 5 },
+  { id: 'notifications', name: '通知', message: '系统维护通知', time: '星期一', unread: 0 },
+];
+
 export default function WeChatScreen() {
   const [activeTab, setActiveTab] = useState('chats');
   const [contactsSearchQuery, setContactsSearchQuery] = useState('');
+  const [chats, setChats] = useState<ChatItem[]>(() => initialChats);
   const sectionListRef = useRef<SectionListType<Contact>>(null);
   
   // 判断是否为iOS 26及以上系统
-  const isIOS26OrAbove = Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 26;
+  const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
   const router = useRouter();
+  const safeAreaInsets = useSafeAreaInsets();
+  const safeAreaEdges: Edge[] = isIOS26OrAbove
+    ? ['left', 'right', 'bottom']
+    : ['top', 'left', 'right', 'bottom'];
   const [searchQuery, setSearchQuery] = useState('');
 
   // 更新导航栏标题的函数
@@ -61,44 +100,101 @@ export default function WeChatScreen() {
   );
 
   // 渲染聊天页面
-  const renderChats = () => {
-    // 渲染聊天项
-    const renderChatItem = ({ item }: { item: any }) => (
-      <TouchableOpacity
-        style={styles.chatItem}
-        onPress={() => router.push(`/wechat/chat-detail?id=${item.id}` as any)}
-      >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
-        </View>
-        <View style={styles.chatInfo}>
-          <View style={styles.chatHeader}>
-            <Text style={styles.chatName}>{item.name}</Text>
-            <Text style={styles.chatTime}>{item.time}</Text>
-          </View>
-          <Text style={styles.chatMessage} numberOfLines={1}>{item.message}</Text>
-        </View>
-        {item.unread > 0 && (
-          <View style={styles.unreadBadge}>
-            <Text style={styles.unreadText}>{item.unread > 99 ? '99+' : item.unread}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
+  const sortedChats = useMemo(() => {
+    const keyword = searchQuery.trim().toLowerCase();
+    if (!keyword) {
+      return chats;
+    }
 
-    // 模拟聊天数据
-    const mockChats = [
-      { id: 'assistant', name: '文件传输助手', message: '你可以在这里接收文件', time: '上午 10:30', unread: 0 },
-      { id: '1', name: '张三', message: '好的，明天见！', time: '上午 9:45', unread: 2 },
-      { id: '2', name: '李四', message: '项目进展如何？', time: '昨天', unread: 1 },
-      { id: '3', name: '王五', message: '收到，谢谢！', time: '星期三', unread: 0 },
-      { id: 'group', name: '团队群', message: '赵六: 会议改到下午3点', time: '星期二', unread: 5 },
-      { id: 'notifications', name: '通知', message: '系统维护通知', time: '星期一', unread: 0 },
-    ];
+    return chats.filter(
+      (chat) =>
+        chat.name.toLowerCase().includes(keyword) || chat.message.toLowerCase().includes(keyword)
+    );
+  }, [chats, searchQuery]);
+
+  const handleTogglePin = (chatId: string) => {
+    setChats((prev) => {
+      const next = prev.map((chat) =>
+        chat.id === chatId ? { ...chat, pinned: !chat.pinned } : chat
+      );
+      return next
+        .filter((chat) => chat.pinned)
+        .concat(next.filter((chat) => !chat.pinned));
+    });
+  };
+
+  const handleDeleteChat = (chatId: string) => {
+    setChats((prev) => prev.filter((chat) => chat.id !== chatId));
+  };
+
+  const renderRightActions = (
+    item: ChatItem,
+    _progress: Animated.AnimatedInterpolation<string | number>,
+    dragX: Animated.AnimatedInterpolation<string | number>
+  ) => {
+    const translateX = dragX.interpolate({
+      inputRange: [-120, 0],
+      outputRange: [0, 60],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View style={[styles.swipeActionsContainer, { transform: [{ translateX }] }]}
+      >
+        <TouchableOpacity
+          style={[styles.swipeActionButton, styles.pinAction]}
+          onPress={() => handleTogglePin(item.id)}
+        >
+          <Text style={styles.swipeActionText}>{item.pinned ? '取消置顶' : '置顶'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.swipeActionButton, styles.deleteAction]}
+          onPress={() =>
+            Alert.alert('删除聊天', `确定要删除与${item.name}的聊天吗？`, [
+              { text: '取消', style: 'cancel' },
+              { text: '删除', style: 'destructive', onPress: () => handleDeleteChat(item.id) },
+            ])
+          }
+        >
+          <Text style={styles.swipeActionText}>删除</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  const renderChats = () => {
+    const renderChatItem = ({ item }: { item: ChatItem }) => (
+      <Swipeable
+        overshootRight={false}
+        renderRightActions={(progress, dragX) => renderRightActions(item, progress, dragX)}
+      >
+        <TouchableOpacity
+          style={[styles.chatItem, item.pinned && styles.chatItemPinned]}
+          onPress={() => router.push(`/wechat/chat-detail?id=${item.id}` as any)}
+        >
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+          </View>
+          <View style={styles.chatInfo}>
+            <View style={styles.chatHeader}>
+              <Text style={styles.chatName}>{item.name}</Text>
+              <Text style={styles.chatTime}>{item.time}</Text>
+            </View>
+            <Text style={styles.chatMessage} numberOfLines={1}>
+              {item.message}
+            </Text>
+          </View>
+          {item.unread > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadText}>{item.unread > 99 ? '99+' : item.unread}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Swipeable>
+    );
 
     return (
       <View style={styles.chatsContainer}>
-        {/* 搜索框 */}
         <View style={styles.chatsSearchContainer}>
           <View style={styles.chatsSearchInputContainer}>
             <Ionicons name="search" size={16} color="#999" style={styles.chatsSearchIcon} />
@@ -108,27 +204,30 @@ export default function WeChatScreen() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor="#999"
+              underlineColorAndroid="transparent"
             />
           </View>
         </View>
 
-        {/* 聊天列表 */}
         <View style={styles.chatsListContainer}>
           <View style={styles.chatsHeader}>
-            <Text style={styles.chatsCount}>聊天 ({mockChats.length})</Text>
-            <TouchableOpacity style={styles.addChatButton} onPress={() => Alert.alert('发起聊天', '发起聊天功能待实现')}>
+            <Text style={styles.chatsCount}>聊天 ({sortedChats.length})</Text>
+            <TouchableOpacity
+              style={styles.addChatButton}
+              onPress={() => Alert.alert('发起聊天', '发起聊天功能待实现')}
+            >
               <Ionicons name="add-circle" size={20} color="#07C160" />
             </TouchableOpacity>
           </View>
-          
-          {mockChats.length > 0 ? (
-            <View style={styles.chatItemsContainer}>
-              {mockChats.map((chat) => (
-                <View key={chat.id}>
-                  {renderChatItem({ item: chat })}
-                </View>
-              ))}
-            </View>
+
+          {sortedChats.length > 0 ? (
+            <FlatList
+              data={sortedChats}
+              keyExtractor={(item) => item.id}
+              renderItem={renderChatItem}
+              contentContainerStyle={styles.chatItemsContainer}
+              showsVerticalScrollIndicator={false}
+            />
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>没有找到相关聊天</Text>
@@ -205,6 +304,7 @@ export default function WeChatScreen() {
                     value={contactsSearchQuery}
                     onChangeText={setContactsSearchQuery}
                     placeholderTextColor="#999999"
+                    underlineColorAndroid="transparent"
                   />
                 </View>
               </View>
@@ -282,13 +382,8 @@ export default function WeChatScreen() {
   };
   
   return (
-    <View style={{ flex: 1 }}>
-      {/* iOS底部安全区域背景色 */}
-      {Platform.OS === 'ios' && (
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#f7f7f7', height: 50 }} />
-      )}
-      
-      <SafeAreaView style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: '#ededed' }}>
+      <SafeAreaView style={styles.container} edges={safeAreaEdges}>
         <StatusBar barStyle="dark-content" backgroundColor="#ededed" />
 
         {/* 顶部导航栏 - iOS 26以下显示自定义导航栏 */}
@@ -334,7 +429,17 @@ export default function WeChatScreen() {
       </SafeAreaView>
       
       {/* 底部标签栏 - 移出SafeAreaView以突破安全区域限制 */}
-      <View style={styles.tabBar}>
+      <View
+        style={[
+          styles.tabBar,
+          {
+            paddingBottom:
+              Platform.OS === 'ios'
+                ? Math.max(safeAreaInsets.bottom, 20)
+                : Math.max(safeAreaInsets.bottom, 16),
+          },
+        ]}
+      >
         <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('chats')}>
           <Ionicons 
             name="chatbubble" 
@@ -491,10 +596,9 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#f7f7f7',
+    backgroundColor: '#ededed',
     borderTopWidth: 0.5,
     borderTopColor: '#d9d9d9',
-    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
     paddingTop: 8,
   },
   tabItem: {
@@ -529,6 +633,9 @@ const styles = StyleSheet.create({
     color: '#000',
     marginLeft: 8,
     padding: 0,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   featuresContainer: {
     backgroundColor: '#ffffff',
@@ -642,6 +749,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+    textAlignVertical: 'center',
+    paddingVertical: 0,
+    includeFontPadding: false,
   },
   chatsListContainer: {
     flex: 1,
@@ -664,7 +774,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   chatItemsContainer: {
-    flex: 1,
+    paddingBottom: 24,
   },
   chatItem: {
     flexDirection: 'row',
@@ -674,6 +784,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: '#e5e5e5',
     backgroundColor: '#fff',
+  },
+  chatItemPinned: {
+    backgroundColor: '#f9f9f9',
   },
   chatInfo: {
     flex: 1,
@@ -711,5 +824,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#fff',
     fontWeight: '500',
+  },
+  swipeActionsContainer: {
+    flexDirection: 'row',
+    height: '100%',
+  },
+  swipeActionButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    minWidth: 80,
+  },
+  pinAction: {
+    backgroundColor: '#07C160',
+  },
+  deleteAction: {
+    backgroundColor: '#FA5151',
+  },
+  swipeActionText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

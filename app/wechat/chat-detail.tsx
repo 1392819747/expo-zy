@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useHeaderHeight } from '@react-navigation/elements';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -6,13 +7,14 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import type { Edge } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { mockContacts } from '../../models/contacts';
 
 interface Message {
@@ -63,6 +65,12 @@ export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const navigation = useNavigation();
   const [draftMessage, setDraftMessage] = useState('');
+  const headerHeight = useHeaderHeight();
+  const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
+  const hasNativeHeader = Platform.OS === 'android' || isIOS26OrAbove;
+  const safeAreaEdges: Edge[] = hasNativeHeader
+    ? ['left', 'right', 'bottom']
+    : ['top', 'left', 'right', 'bottom'];
 
   const chatId = useMemo(() => {
     if (Array.isArray(id)) {
@@ -118,11 +126,11 @@ export default function ChatDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={safeAreaEdges}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
       >
         <View style={styles.messagesWrapper}>
           <FlatList
@@ -147,6 +155,7 @@ export default function ChatDetailScreen() {
                 onChangeText={setDraftMessage}
                 placeholderTextColor="#999"
                 multiline
+                underlineColorAndroid="transparent"
               />
             </View>
             <TouchableOpacity style={styles.sendButton}>
@@ -261,12 +270,16 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#f7f7f7',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: Platform.select({ ios: 6, default: 4 }),
   },
   textInput: {
     fontSize: 16,
     color: '#111',
     padding: 0,
+    paddingVertical: 0,
+    textAlignVertical: 'top',
+    includeFontPadding: false,
+    lineHeight: 20,
   },
   sendButton: {
     paddingHorizontal: 12,

@@ -1,18 +1,18 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from 'react-native';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { mockContacts } from '../../models/contacts';
 
 interface Message {
@@ -124,31 +124,35 @@ export default function ChatDetailScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
       >
-        <FlatList
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessageItem}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-        />
+        <View style={styles.messagesWrapper}>
+          <FlatList
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessageItem}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
 
-        <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="add" size={24} color="#333" />
-          </TouchableOpacity>
-          <View style={styles.textInputWrapper}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="发送消息"
-              value={draftMessage}
-              onChangeText={setDraftMessage}
-              placeholderTextColor="#999"
-              multiline
-            />
+        <View style={styles.floatingInputWrapper} pointerEvents="box-none">
+          <View style={styles.inputBubble}>
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="add" size={24} color="#333" />
+            </TouchableOpacity>
+            <View style={styles.textInputWrapper}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="发送消息"
+                value={draftMessage}
+                onChangeText={setDraftMessage}
+                placeholderTextColor="#999"
+                multiline
+              />
+            </View>
+            <TouchableOpacity style={styles.sendButton}>
+              <Text style={styles.sendButtonText}>发送</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.sendButton}>
-            <Text style={styles.sendButtonText}>发送</Text>
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -164,10 +168,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#e5e5e5',
   },
+  messagesWrapper: {
+    flex: 1,
+  },
   messagesContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 12,
+    paddingBottom: 140,
   },
   systemMessageContainer: {
     alignItems: 'center',
@@ -216,32 +223,45 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
   },
-  inputContainer: {
+  floatingInputWrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 24,
+    paddingTop: 8,
+  },
+  inputBubble: {
     flexDirection: 'row',
     alignItems: 'flex-end',
+    backgroundColor: '#ffffff',
+    borderRadius: 28,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#f7f7f7',
-    borderTopWidth: 0.5,
-    borderTopColor: '#dcdcdc',
+    paddingVertical: 10,
     gap: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 12,
   },
   actionButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f3f3f3',
     justifyContent: 'center',
     alignItems: 'center',
   },
   textInputWrapper: {
     flex: 1,
-    minHeight: 36,
+    minHeight: 32,
     maxHeight: 120,
     borderRadius: 18,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f7f7f7',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   textInput: {
     fontSize: 16,

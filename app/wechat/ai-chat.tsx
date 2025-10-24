@@ -254,7 +254,7 @@ export default function AIChatScreen() {
   const [inputValue, setInputValue] = useState('');
   const [isResponding, setIsResponding] = useState(false);
   const flatListRef = useRef<FlatList<Message>>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
   const { draft, persist } = useDraftStorage();
 
@@ -317,7 +317,7 @@ export default function AIChatScreen() {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      typingTimeoutRef.current = setTimeout(() => {
+      typingTimeoutRef.current = window.setTimeout(() => {
         const candidateResponses = PERSONA_RESPONSES[selectedPersonaId];
         const replyText =
           candidateResponses[Math.floor(Math.random() * candidateResponses.length)] ??

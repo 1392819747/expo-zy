@@ -43,7 +43,7 @@ type AppIconItem = {
   image?: ImageSourcePropType;
   kind: 'app';
   label: string;
-  renderIcon?: (size: number) => JSX.Element;
+  renderIcon?: (size: number) => React.ReactElement;
 };
 
 type WeatherWidgetItem = {

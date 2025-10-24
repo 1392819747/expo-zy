@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
@@ -33,8 +33,11 @@ import Sortable, {
   useItemContext
 } from 'react-native-sortables';
 
-import { fetchWeatherByLocation, fetchWeatherData, getUserLocation, WeatherData } from '../../services/weatherService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiSettingsIcon from '../../components/icons/ApiSettingsIcon';
+import WallpaperIcon from '../../components/icons/WallpaperIcon';
+import { useThemeColors } from '../../hooks/useThemeColors';
+import { fetchWeatherByLocation, fetchWeatherData, getUserLocation, WeatherData } from '../../services/weatherService';
 
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -95,6 +98,11 @@ const APP_ICONS: AppIconItem[] = [
     kind: 'app',
     label: 'API Settings',
     renderIcon: size => <ApiSettingsIcon size={size} />
+  },
+  {
+    kind: 'app',
+    label: 'Wallpaper',
+    renderIcon: size => <WallpaperIcon size={size} />
   },
   { image: require('../../assets/images/app-icons/gmail.png'), kind: 'app', label: 'Gmail' },
   { image: require('../../assets/images/app-icons/google.png'), kind: 'app', label: 'Google' },
@@ -315,6 +323,7 @@ type WeatherWidgetProps = {
   onDelete: (item: WeatherWidgetItem) => void;
   onPress?: () => void;
   size: { height: number; width: number };
+  isDark?: boolean;
 };
 
 const WeatherWidget = memo(function WeatherWidget({
@@ -322,7 +331,8 @@ const WeatherWidget = memo(function WeatherWidget({
   item,
   onDelete,
   onPress,
-  size
+  size,
+  isDark = false
 }: WeatherWidgetProps) {
   const { isActive } = useItemContext();
 
@@ -357,7 +367,7 @@ const WeatherWidget = memo(function WeatherWidget({
       ]}>
       <Pressable onPress={onPress} style={{ flex: 1 }}>
         <LinearGradient
-          colors={['#1a1f38', '#1f2c5c', '#274782']}
+          colors={isDark ? ['#0a0a0a', '#1a1a1a', '#2a2a2a'] : ['#1a1f38', '#1f2c5c', '#274782']}
           end={{ x: 1, y: 1 }}
           start={{ x: 0, y: 0 }}
           style={[styles.widgetContainer, { height: size.height, width: size.width }]}>
@@ -411,9 +421,13 @@ const WeatherWidget = memo(function WeatherWidget({
 });
 
 export default function AppleIconSort() {
+  const { colors, isDark } = useThemeColors();
   // 天气数据状态
   const [weatherData, setWeatherData] = useState<WeatherWidgetItem>(WEATHER_WIDGET);
   const [isLoadingWeather, setIsLoadingWeather] = useState(true);
+  
+  // 壁纸状态
+  const [wallpaperUri, setWallpaperUri] = useState<string | null>(null);
 
   // 获取天气数据
   const loadWeatherData = useCallback(async () => {
@@ -455,6 +469,30 @@ export default function AppleIconSort() {
   useEffect(() => {
     loadWeatherData();
   }, [loadWeatherData]);
+
+  // 加载壁纸
+  const loadWallpaper = useCallback(async () => {
+    try {
+      const saved = await AsyncStorage.getItem('desktop_wallpaper');
+      if (saved) {
+        setWallpaperUri(saved);
+      }
+    } catch (error) {
+      console.error('加载壁纸失败:', error);
+    }
+  }, []);
+
+  // 组件挂载时加载壁纸
+  useEffect(() => {
+    loadWallpaper();
+  }, [loadWallpaper]);
+
+  // 监听页面焦点，重新加载壁纸（从壁纸页面返回时更新）
+  useFocusEffect(
+    useCallback(() => {
+      loadWallpaper();
+    }, [loadWallpaper])
+  );
 
   // 当天气数据更新时，同步更新gridItems中的天气小组件
   useEffect(() => {
@@ -647,6 +685,10 @@ export default function AppleIconSort() {
       }
       if (item.label === 'API Settings') {
         router.push('/api-settings' as any);
+        return;
+      }
+      if (item.label === 'Wallpaper') {
+        router.push('/wallpaper' as any);
         return;
       }
       Alert.alert(item.label, '该应用稍后提供完整体验。');
@@ -1219,8 +1261,36 @@ export default function AppleIconSort() {
   );
 
   return (
-    <SafeAreaView edges={isAndroid ? ['top', 'left', 'right'] : ['top', 'left', 'right']} style={styles.container}>
+    <SafeAreaView edges={isAndroid ? ['top', 'left', 'right'] : ['top', 'left', 'right']} style={[styles.container, { backgroundColor: '#1a73e8' }]}>
       <StatusBar hidden={isEditing} style="light" backgroundColor="transparent" translucent={true} />
+      
+      {/* 壁纸背景 */}
+      {wallpaperUri && (
+        <Image
+          source={{ uri: wallpaperUri }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+          resizeMode="cover"
+        />
+      )}
+      
+      {/* 深色模式遮罩层 */}
+      {isDark && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          pointerEvents: 'none',
+        }} />
+      )}
       {/* Done按钮放在状态栏右上角 */}
       {isEditing && (
         <AnimatedPressable
@@ -1272,6 +1342,7 @@ export default function AppleIconSort() {
                             onDelete={handleBoardItemDelete}
                             onPress={handleWeatherWidgetPress}
                             size={widgetSize}
+                            isDark={isDark}
                           />
                         </View>
                       );

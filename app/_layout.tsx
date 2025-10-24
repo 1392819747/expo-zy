@@ -1,11 +1,11 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import 'react-native-reanimated';
-import '../global.css';
 import { Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import '../global.css';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -26,6 +26,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="index" options={{ title: 'Home' }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

@@ -753,7 +753,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     maxHeight: 120,
-    padding: 0
+    padding: 0,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+    textAlign: 'left',
+    textAlignVertical: 'top',
+    includeFontPadding: false,
   },
   sendButton: {
     alignItems: 'center',

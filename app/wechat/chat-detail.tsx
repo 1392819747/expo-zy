@@ -12,10 +12,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  StatusBar,
 } from 'react-native';
 import type { Edge } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { mockContacts } from '../../models/contacts';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Message {
   id: string;
@@ -62,6 +64,7 @@ const defaultHistory: Message[] = [
 ];
 
 export default function ChatDetailScreen() {
+  const { colors, isDark } = useThemeColors();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const navigation = useNavigation();
   const [draftMessage, setDraftMessage] = useState('');
@@ -99,8 +102,18 @@ export default function ChatDetailScreen() {
   }, [contact, chatId]);
 
   useEffect(() => {
-    navigation.setOptions({ title: conversationTitle } as NativeStackNavigationOptions);
-  }, [conversationTitle, navigation]);
+    navigation.setOptions({ 
+      title: conversationTitle,
+      headerStyle: {
+        backgroundColor: colors.background,
+      },
+      headerTintColor: colors.text,
+      headerTitleStyle: {
+        color: colors.text,
+      },
+      headerShadowVisible: false,
+    } as NativeStackNavigationOptions);
+  }, [conversationTitle, navigation, colors]);
 
   const messages = chatHistories[chatId] ?? defaultHistory;
 
@@ -108,7 +121,7 @@ export default function ChatDetailScreen() {
     if (item.sender === 'system') {
       return (
         <View style={styles.systemMessageContainer}>
-          <Text style={styles.systemMessageText}>{item.text}</Text>
+          <Text style={[styles.systemMessageText, { color: colors.textTertiary, backgroundColor: colors.border }]}>{item.text}</Text>
         </View>
       );
     }
@@ -117,20 +130,31 @@ export default function ChatDetailScreen() {
 
     return (
       <View style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowOther]}>
-        <View style={[styles.messageBubble, isMe ? styles.messageBubbleMe : styles.messageBubbleOther]}>
-          <Text style={styles.messageText}>{item.text}</Text>
+        <View style={[isMe ? styles.avatarMe : styles.avatar, { backgroundColor: isMe ? colors.avatarBackgroundMe : colors.avatarBackground }]}>
+          <Text style={isMe ? styles.avatarTextMe : styles.avatarText}>
+            {isMe ? '我' : contact?.name?.charAt(0) || chatId === 'assistant' ? '文' : chatId === 'group' ? '团' : chatId === 'notifications' ? '通' : '联'}
+          </Text>
         </View>
-        {item.time && <Text style={styles.messageTime}>{item.time}</Text>}
+        <View style={[styles.messageContent, isMe && styles.messageContentMe]}>
+          <View style={[styles.messageBubble, isMe ? { backgroundColor: colors.chatBubbleMe } : { backgroundColor: colors.chatBubbleOther }]}>
+            <Text style={[styles.messageText, { color: colors.text }]}>{item.text}</Text>
+          </View>
+          {item.time && <Text style={[styles.messageTime, { color: colors.textTertiary }, isMe && styles.messageTimeMe]}>{item.time}</Text>}
+        </View>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={safeAreaEdges}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={safeAreaEdges}>
+      <StatusBar 
+        barStyle={isDark ? 'light-content' : 'dark-content'} 
+        backgroundColor={colors.background} 
+      />
       <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : hasNativeHeader ? 90 : headerHeight + 90}
       >
         <View style={styles.messagesWrapper}>
           <FlatList
@@ -142,23 +166,24 @@ export default function ChatDetailScreen() {
           />
         </View>
 
-        <View style={styles.floatingInputWrapper} pointerEvents="box-none">
-          <View style={styles.inputBubble}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="add" size={24} color="#333" />
+        <View style={styles.inputContainer}>
+          <View style={[styles.inputBubble, { backgroundColor: colors.backgroundSecondary, shadowColor: colors.cardShadow }]}>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundTertiary }]}>
+              <Ionicons name="add" size={24} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.textInputWrapper}>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { color: colors.text }]}
                 placeholder="发送消息"
                 value={draftMessage}
                 onChangeText={setDraftMessage}
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.placeholder}
                 multiline
+                scrollEnabled={false}
                 underlineColorAndroid="transparent"
               />
             </View>
-            <TouchableOpacity style={styles.sendButton}>
+            <TouchableOpacity style={[styles.sendButton, { backgroundColor: colors.primary }]}>
               <Text style={styles.sendButtonText}>发送</Text>
             </TouchableOpacity>
           </View>
@@ -171,7 +196,7 @@ export default function ChatDetailScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ededed',
+    backgroundColor: '#e5e5e5',
   },
   container: {
     flex: 1,
@@ -183,7 +208,7 @@ const styles = StyleSheet.create({
   messagesContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 140,
+    paddingBottom: 20,
   },
   systemMessageContainer: {
     alignItems: 'center',
@@ -199,17 +224,54 @@ const styles = StyleSheet.create({
   },
   messageRow: {
     marginBottom: 12,
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'flex-start',
+    gap: 8,
   },
   messageRowMe: {
-    alignItems: 'flex-end',
+    flexDirection: 'row-reverse',
+    alignSelf: 'flex-end',
   },
   messageRowOther: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+  },
+  messageContent: {
+    flexDirection: 'column',
     alignItems: 'flex-start',
+    maxWidth: '70%',
+  },
+  messageContentMe: {
+    alignItems: 'flex-end',
+    marginRight: 0,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
+    backgroundColor: '#07C160',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#ffffff',
+  },
+  avatarMe: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
+    backgroundColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarTextMe: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#ffffff',
   },
   messageBubble: {
-    maxWidth: '80%',
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -232,13 +294,13 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
   },
-  floatingInputWrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
+  messageTimeMe: {
+    textAlign: 'right',
+  },
+  inputContainer: {
+    backgroundColor: 'transparent',
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 24,
+    paddingBottom: 12,
     paddingTop: 8,
   },
   inputBubble: {
@@ -262,30 +324,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f3f3',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 2,
   },
   textInputWrapper: {
     flex: 1,
     minHeight: 32,
     maxHeight: 120,
     borderRadius: 18,
-    backgroundColor: '#f7f7f7',
+    backgroundColor: 'transparent',
     paddingHorizontal: 12,
-    paddingVertical: Platform.select({ ios: 6, default: 4 }),
+    paddingVertical: 0,
+    justifyContent: 'center',
   },
   textInput: {
     fontSize: 16,
     color: '#111',
     padding: 0,
     paddingVertical: 0,
-    textAlignVertical: 'top',
+    paddingHorizontal: 0,
+    paddingTop: Platform.OS === 'ios' ? 2 : 0,
+    paddingBottom: 0,
+    textAlign: 'left',
+    textAlignVertical: 'center',
     includeFontPadding: false,
     lineHeight: 20,
+    height: 32,
   },
   sendButton: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    height: 32,
     borderRadius: 16,
     backgroundColor: '#07C160',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 2,
   },
   sendButtonText: {
     fontSize: 14,

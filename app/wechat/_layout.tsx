@@ -1,18 +1,44 @@
+import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useGlobalSearchParams, useFocusEffect } from 'expo-router';
 import { Platform, Text, TouchableOpacity } from 'react-native';
 
 export default function WeChatLayout() {
   const router = useRouter();
+  const params = useGlobalSearchParams();
   // 检测iOS 26及以上版本
   const isIOS26OrAbove = Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 26;
+  
+  // 使用状态来跟踪当前标签页
+  const [currentTab, setCurrentTab] = useState(params.tab as string || 'chats');
+  
+  // 监听焦点变化，更新当前标签页
+  useFocusEffect(() => {
+    setCurrentTab(params.tab as string || 'chats');
+  });
+  
+  // 根据当前标签页获取标题
+  const getTitle = () => {
+    switch(currentTab) {
+      case 'chats': return '微信';
+      case 'contacts': return '通讯录';
+      case 'discover': return '发现';
+      case 'me': return '我';
+      default: return '微信';
+    }
+  };
+  
+  // 判断是否在通讯录页面
+  const isContactsPage = currentTab === 'contacts';
   
   return (
     <Stack 
       screenOptions={{
         // 只在iOS 26+启用原生导航栏效果
-        headerTransparent: isIOS26OrAbove,
-        headerBlurEffect: isIOS26OrAbove ? 'systemMaterial' : undefined,
+        headerTransparent: false,
+        headerStyle: {
+          backgroundColor: '#ededed',
+        },
       }}
     >
       <Stack.Screen 
@@ -20,7 +46,7 @@ export default function WeChatLayout() {
         options={{ 
           // iOS 26+使用原生导航栏，低版本使用自定义导航栏
           headerShown: isIOS26OrAbove,
-          title: '微信',
+          title: getTitle(),
           headerStyle: {
             backgroundColor: '#ededed',
           },
@@ -30,7 +56,7 @@ export default function WeChatLayout() {
           // iOS 26+使用系统原生返回图标样式
           headerBackTitle: '',
           // iOS 26+添加左侧返回按钮和右侧加号按钮
-          headerLeft: isIOS26OrAbove ? () => (
+          headerLeft: isIOS26OrAbove && !isContactsPage ? () => (
             <TouchableOpacity 
               onPress={() => router.back()}
               style={{ 
@@ -48,7 +74,15 @@ export default function WeChatLayout() {
           ) : undefined,
           headerRight: isIOS26OrAbove ? () => (
             <TouchableOpacity 
-              onPress={() => router.push('/wechat/ai-chat')}
+              onPress={() => {
+                if (isContactsPage) {
+                  // 通讯录页面显示添加好友功能
+                  router.push('/wechat/contact-add' as any);
+                } else {
+                  // 其他页面显示AI聊天功能
+                  router.push('/wechat/ai-chat' as any);
+                }
+              }}
               style={{ 
                 marginLeft: 3,
                 marginRight: 0,
@@ -57,7 +91,7 @@ export default function WeChatLayout() {
                 backgroundColor: 'transparent',
               }}
             >
-              <Ionicons name="add" size={22} color="#000" />
+              <Ionicons name={isContactsPage ? "person-add" : "add"} size={22} color="#000" />
             </TouchableOpacity>
           ) : undefined,
         }} 
@@ -67,8 +101,10 @@ export default function WeChatLayout() {
         options={{
           headerShown: isIOS26OrAbove,
           title: '搜索',
-          headerTransparent: true,
-          headerBlurEffect: isIOS26OrAbove ? 'systemMaterial' : undefined,
+          headerTransparent: false,
+          headerStyle: {
+            backgroundColor: '#ededed',
+          },
           presentation: 'card',
           // iOS 26+添加原生搜索栏
           headerSearchBarOptions: isIOS26OrAbove ? {
@@ -83,8 +119,40 @@ export default function WeChatLayout() {
         options={{
           headerShown: isIOS26OrAbove,
           title: 'AI聊天',
-          headerTransparent: true,
-          headerBlurEffect: isIOS26OrAbove ? 'systemMaterial' : undefined,
+          headerTransparent: false,
+          headerStyle: {
+            backgroundColor: '#ededed',
+          },
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="contacts"
+        options={{
+          headerShown: false,
+          presentation: 'card',
+          // 当在通讯录页面时，修改index页面的导航栏
+          animation: 'none',
+        }}
+      />
+      <Stack.Screen
+        name="contact-list"
+        options={{
+          headerShown: false,
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="contact-detail"
+        options={{
+          headerShown: false,
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="contact-add"
+        options={{
+          headerShown: false,
           presentation: 'card',
         }}
       />

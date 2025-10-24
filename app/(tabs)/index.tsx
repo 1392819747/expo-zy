@@ -642,11 +642,11 @@ export default function AppleIconSort() {
       }
       void Haptics.selectionAsync();
       if (item.label === 'WeChat') {
-        router.push('/wechat');
+        router.push('/wechat' as any);
         return;
       }
       if (item.label === 'API Settings') {
-        router.push('/api-settings');
+        router.push('/api-settings' as any);
         return;
       }
       Alert.alert(item.label, '该应用稍后提供完整体验。');

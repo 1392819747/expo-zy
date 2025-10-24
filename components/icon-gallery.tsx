@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 
 interface DownloadedIcon {
@@ -32,7 +32,7 @@ export default function IconGallery({ onIconSelect, showDeleteOption = true }: I
    */
   const loadDownloadedIcons = async () => {
     try {
-      const iconsDir = `${FileSystem.documentDirectory}app-icons/`;
+      const iconsDir = `${FileSystem.documentDirectory as string}app-icons/`;
       const dirInfo = await FileSystem.getInfoAsync(iconsDir);
       
       if (!dirInfo.exists) {

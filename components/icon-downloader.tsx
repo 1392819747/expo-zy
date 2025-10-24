@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 
 interface AppInfo {
@@ -57,7 +57,7 @@ export default function IconDownloader({ onIconDownloaded }: IconDownloaderProps
    */
   const loadDownloadedIcons = async () => {
     try {
-      const iconsDir = `${FileSystem.documentDirectory}app-icons/`;
+      const iconsDir = `${FileSystem.documentDirectory as string}app-icons/`;
       const dirInfo = await FileSystem.getInfoAsync(iconsDir);
       
       if (dirInfo.exists) {
@@ -89,7 +89,7 @@ export default function IconDownloader({ onIconDownloaded }: IconDownloaderProps
     
     try {
       // 创建图标存储目录
-      const iconsDir = `${FileSystem.documentDirectory}app-icons/`;
+      const iconsDir = `${FileSystem.documentDirectory as string}app-icons/`;
       const dirInfo = await FileSystem.getInfoAsync(iconsDir);
       
       if (!dirInfo.exists) {
@@ -123,7 +123,7 @@ export default function IconDownloader({ onIconDownloaded }: IconDownloaderProps
       }
     } catch (error) {
       console.error('下载图标失败:', error);
-      Alert.alert('错误', `下载 ${app.name} 图标失败: ${error.message}`);
+      Alert.alert('错误', `下载 ${app.name} 图标失败: ${(error as Error).message}`);
     } finally {
       setDownloading(null);
     }
@@ -164,7 +164,7 @@ export default function IconDownloader({ onIconDownloaded }: IconDownloaderProps
    */
   const deleteIcon = async (app: AppInfo) => {
     try {
-      const localPath = `${FileSystem.documentDirectory}app-icons/${app.bundleId}.png`;
+      const localPath = `${FileSystem.documentDirectory as string}app-icons/${app.bundleId}.png`;
       await FileSystem.deleteAsync(localPath);
       
       setDownloadedIcons(prev => {
@@ -176,7 +176,7 @@ export default function IconDownloader({ onIconDownloaded }: IconDownloaderProps
       Alert.alert('成功', `${app.name} 图标已删除！`);
     } catch (error) {
       console.error('删除图标失败:', error);
-      Alert.alert('错误', `删除 ${app.name} 图标失败: ${error.message}`);
+      Alert.alert('错误', `删除 ${app.name} 图标失败: ${(error as Error).message}`);
     }
   };
 
@@ -202,7 +202,7 @@ export default function IconDownloader({ onIconDownloaded }: IconDownloaderProps
         {apps.map((app) => {
           const isDownloaded = downloadedIcons.has(app.bundleId);
           const isDownloading = downloading === app.bundleId;
-          const localPath = `${FileSystem.documentDirectory}app-icons/${app.bundleId}.png`;
+          const localPath = `${FileSystem.documentDirectory as string}app-icons/${app.bundleId}.png`;
 
           return (
             <View key={app.bundleId} style={styles.appItem}>

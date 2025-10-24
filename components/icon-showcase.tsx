@@ -31,7 +31,7 @@ export default function IconShowcase() {
     { name: '微博', filename: 'weibo.png', color: '#E6162D' },
   ];
 
-  const handleIconPress = (icon) => {
+  const handleIconPress = (icon: { name: string; filename: string; color: string }) => {
     console.log(`点击了图标: ${icon.name}`);
     // 这里可以添加点击处理逻辑
   };

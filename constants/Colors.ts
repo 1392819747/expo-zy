@@ -59,7 +59,7 @@ export const Colors = {
     borderLight: '#48484a',
     
     // 微信特色
-    primary: '#07C160',
+    primary: '#34C759',
     chatBubbleMe: '#056b33',
     chatBubbleOther: '#2c2c2e',
     
@@ -71,11 +71,11 @@ export const Colors = {
     // 标签栏
     tabBarBackground: '#1c1c1e',
     tabBarBorder: '#38383a',
-    tabBarActive: '#07C160',
+    tabBarActive: '#34C759',
     tabBarInactive: '#808080',
     
     // 头像
-    avatarBackground: '#056b33',
+    avatarBackground: '#34C759',
     avatarBackgroundMe: '#1e40af',
     
     // 输入框

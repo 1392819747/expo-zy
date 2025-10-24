@@ -1,23 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useHeaderHeight } from '@react-navigation/elements';
-import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  StatusBar,
 } from 'react-native';
 import type { Edge } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { mockContacts } from '../../models/contacts';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { mockContacts } from '../../models/contacts';
 
 interface Message {
   id: string;
@@ -65,8 +64,13 @@ const defaultHistory: Message[] = [
 
 export default function ChatDetailScreen() {
   const { colors, isDark } = useThemeColors();
-  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
-  const navigation = useNavigation();
+  const { id, contactId, contactName, avatar } = useLocalSearchParams<{ 
+    id?: string | string[], 
+    contactId?: string | string[],
+    contactName?: string | string[],
+    avatar?: string | string[]
+  }>();
+  const router = useRouter();
   const [draftMessage, setDraftMessage] = useState('');
   const headerHeight = useHeaderHeight();
   const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
@@ -76,13 +80,28 @@ export default function ChatDetailScreen() {
     : ['top', 'left', 'right', 'bottom'];
 
   const chatId = useMemo(() => {
-    if (Array.isArray(id)) {
-      return id[0];
+    // 优先使用contactId参数，其次是id参数
+    let idToUse = '';
+    if (contactId) {
+      idToUse = Array.isArray(contactId) ? contactId[0] : contactId;
+    } else if (id) {
+      idToUse = Array.isArray(id) ? id[0] : id;
     }
-    return id ?? '';
-  }, [id]);
+    return idToUse;
+  }, [id, contactId]);
 
-  const contact = useMemo(() => mockContacts.find((item) => item.id === chatId), [chatId]);
+  const contact = useMemo(() => {
+    // 如果有传入的联系人信息，优先使用
+    if (chatId && contactName) {
+      return {
+        id: chatId,
+        name: Array.isArray(contactName) ? contactName[0] : contactName,
+        avatar: avatar ? (Array.isArray(avatar) ? avatar[0] : avatar) : undefined,
+      };
+    }
+    // 否则从mockContacts中查找
+    return mockContacts.find((item) => item.id === chatId);
+  }, [chatId, contactName, avatar]);
 
   const conversationTitle = useMemo(() => {
     if (contact) {
@@ -101,19 +120,17 @@ export default function ChatDetailScreen() {
     }
   }, [contact, chatId]);
 
+  const handleEditContact = () => {
+    // 如果有联系人ID，导航到联系人详情页
+    if (chatId && contact) {
+      router.push(`/wechat/contact-detail?id=${chatId}`);
+    }
+  };
+
   useEffect(() => {
-    navigation.setOptions({ 
-      title: conversationTitle,
-      headerStyle: {
-        backgroundColor: colors.background,
-      },
-      headerTintColor: colors.text,
-      headerTitleStyle: {
-        color: colors.text,
-      },
-      headerShadowVisible: false,
-    } as NativeStackNavigationOptions);
-  }, [conversationTitle, navigation, colors]);
+    // 在Expo Router中，我们不需要手动设置header选项
+    // 这些选项应该在_layout.tsx中配置
+  }, [conversationTitle, colors, contact, handleEditContact]);
 
   const messages = chatHistories[chatId] ?? defaultHistory;
 
@@ -132,7 +149,7 @@ export default function ChatDetailScreen() {
       <View style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowOther]}>
         <View style={[isMe ? styles.avatarMe : styles.avatar, { backgroundColor: isMe ? colors.avatarBackgroundMe : colors.avatarBackground }]}>
           <Text style={isMe ? styles.avatarTextMe : styles.avatarText}>
-            {isMe ? '我' : contact?.name?.charAt(0) || chatId === 'assistant' ? '文' : chatId === 'group' ? '团' : chatId === 'notifications' ? '通' : '联'}
+            {isMe ? '我' : contact?.avatar || contact?.name?.charAt(0) || chatId === 'assistant' ? '文' : chatId === 'group' ? '团' : chatId === 'notifications' ? '通' : '联'}
           </Text>
         </View>
         <View style={[styles.messageContent, isMe && styles.messageContentMe]}>
@@ -184,7 +201,7 @@ export default function ChatDetailScreen() {
               />
             </View>
             <TouchableOpacity style={[styles.sendButton, { backgroundColor: colors.primary }]}>
-              <Text style={styles.sendButtonText}>发送</Text>
+              <Text style={[styles.sendButtonText, { color: '#ffffff' }]}>发送</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -361,7 +378,6 @@ const styles = StyleSheet.create({
   },
   sendButtonText: {
     fontSize: 14,
-    color: '#ffffff',
     fontWeight: '600',
   },
 });

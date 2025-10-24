@@ -1,14 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, TextInput, Alert, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AddContactScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = React.useState('');
+  const insets = useSafeAreaInsets();
+  
+  // 系统检测
+  const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
+  const isAndroid = Platform.OS === 'android';
+  
+  // contact-add页面始终使用自定义导航栏
+  const hasNativeHeader = false;
+  const safeAreaEdges = ['top', 'left', 'right', 'bottom'];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={safeAreaEdges}>
       <StatusBar barStyle="dark-content" backgroundColor="#ededed" />
       
       {/* 顶部导航栏 */}

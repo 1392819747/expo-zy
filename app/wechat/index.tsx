@@ -55,6 +55,7 @@ export default function WeChatScreen() {
   const [contactsSearchQuery, setContactsSearchQuery] = useState('');
   const [chats, setChats] = useState<ChatItem[]>(() => initialChats);
   const sectionListRef = useRef<SectionListType<Contact>>(null);
+  const swipeableRefs = useRef<{ [key: string]: Swipeable }>({});
   
   // 判断是否为iOS 26及以上系统
   const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
@@ -102,6 +103,8 @@ export default function WeChatScreen() {
       if (isIOS26OrAbove) {
         router.setParams({ tab: activeTab });
       }
+      // 页面获得焦点时关闭所有Swipeable
+      closeAllSwipeables();
     }, [router, activeTab, isIOS26OrAbove])
   );
 
@@ -154,6 +157,13 @@ export default function WeChatScreen() {
     setChats((prev) => prev.filter((chat) => chat.id !== chatId));
   };
 
+  // 关闭所有打开的Swipeable
+  const closeAllSwipeables = () => {
+    Object.values(swipeableRefs.current).forEach(ref => {
+      ref?.close();
+    });
+  };
+
   const renderRightActions = (
     item: ChatItem,
     _progress: Animated.AnimatedInterpolation<string | number>,
@@ -192,8 +202,21 @@ export default function WeChatScreen() {
   const renderChats = () => {
     const renderChatItem = ({ item }: { item: ChatItem }) => (
       <Swipeable
+        ref={(ref) => {
+          if (ref) {
+            swipeableRefs.current[item.id] = ref;
+          }
+        }}
         overshootRight={false}
         renderRightActions={(progress, dragX) => renderRightActions(item, progress, dragX)}
+        onSwipeableOpen={() => {
+          // 关闭其他所有Swipeable
+          Object.keys(swipeableRefs.current).forEach(key => {
+            if (key !== item.id) {
+              swipeableRefs.current[key]?.close();
+            }
+          });
+        }}
       >
         <TouchableOpacity
           style={[
@@ -201,7 +224,11 @@ export default function WeChatScreen() {
             { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight },
             item.pinned && { backgroundColor: colors.backgroundTertiary }
           ]}
-          onPress={() => router.push(`/wechat/chat-detail?id=${item.id}` as any)}
+          onPress={() => {
+            // 点击聊天项时关闭所有Swipeable
+            closeAllSwipeables();
+            router.push(`/wechat/chat-detail?id=${item.id}` as any);
+          }}
         >
           <View style={[styles.avatar, { backgroundColor: colors.avatarBackground }]}>
             <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
@@ -227,7 +254,13 @@ export default function WeChatScreen() {
     );
 
     return (
-      <View style={[styles.chatsContainer, { backgroundColor: colors.backgroundSecondary }]}>
+      <View style={[styles.chatsContainer, { backgroundColor: colors.backgroundSecondary }]} 
+        onStartShouldSetResponder={() => {
+          // 在容器上点击时关闭所有Swipeable
+          closeAllSwipeables();
+          return false;
+        }}
+      >
         <View style={[styles.chatsSearchContainer, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight }]}>
           <View style={[styles.chatsSearchInputContainer, { 
             backgroundColor: colors.inputBackground, 
@@ -242,6 +275,7 @@ export default function WeChatScreen() {
               onChangeText={setSearchQuery}
               placeholderTextColor={colors.placeholder}
               underlineColorAndroid="transparent"
+              onFocus={() => closeAllSwipeables()}
             />
           </View>
         </View>
@@ -252,7 +286,7 @@ export default function WeChatScreen() {
               data={sortedChats}
               keyExtractor={(item) => item.id}
               renderItem={renderChatItem}
-              contentContainerStyle={styles.chatItemsContainer}
+              contentContainerStyle={[styles.chatItemsContainer, { backgroundColor: colors.backgroundSecondary }]}
               showsVerticalScrollIndicator={false}
             />
           ) : (
@@ -271,7 +305,11 @@ export default function WeChatScreen() {
     const renderContactItem = ({ item }: { item: Contact }) => (
       <TouchableOpacity
         style={[styles.contactItem, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight }]}
-        onPress={() => router.push(`/wechat/contact-detail?id=${item.id}` as any)}
+        onPress={() => {
+          // 点击联系人时关闭所有Swipeable
+          closeAllSwipeables();
+          router.push(`/wechat/contact-detail?id=${item.id}` as any);
+        }}
       >
         <View style={[styles.avatar, { backgroundColor: colors.avatarBackground }]}>
           <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
@@ -295,6 +333,7 @@ export default function WeChatScreen() {
             key={initial}
             style={styles.alphabetItem}
             onPress={() => {
+              closeAllSwipeables();
               sectionListRef.current?.scrollToLocation({
                 sectionIndex: index,
                 itemIndex: 0,
@@ -309,7 +348,13 @@ export default function WeChatScreen() {
     );
 
     return (
-      <View style={[styles.contactsContainer, { backgroundColor: colors.backgroundSecondary }]}>
+      <View style={[styles.contactsContainer, { backgroundColor: colors.backgroundSecondary }]} 
+        onStartShouldSetResponder={() => {
+          // 在容器上点击时关闭所有Swipeable
+          closeAllSwipeables();
+          return false;
+        }}
+      >
         <SectionList
           ref={sectionListRef}
           sections={contactSections}
@@ -319,7 +364,7 @@ export default function WeChatScreen() {
           stickySectionHeadersEnabled
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.contactsListContent}
+          contentContainerStyle={[styles.contactsListContent, { backgroundColor: colors.backgroundSecondary }]}
           ListHeaderComponent={(
             <>
               <View style={[styles.contactsSearchContainer, { backgroundColor: colors.backgroundSecondary }]}>
@@ -336,6 +381,7 @@ export default function WeChatScreen() {
                     onChangeText={setContactsSearchQuery}
                     placeholderTextColor={colors.placeholder}
                     underlineColorAndroid="transparent"
+                    onFocus={() => closeAllSwipeables()}
                   />
                 </View>
               </View>
@@ -347,6 +393,8 @@ export default function WeChatScreen() {
                     style={[styles.featureItem, { borderBottomColor: colors.borderLight }]}
                     onPress={() => {
                       if (feature.route) {
+                        // 点击功能项时关闭所有Swipeable
+                        closeAllSwipeables();
                         router.push(feature.route as any);
                       }
                     }}
@@ -424,7 +472,10 @@ export default function WeChatScreen() {
         <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
           {/* 返回桌面按钮 - 在通讯录页面不显示 */}
           {activeTab !== 'contacts' && (
-            <TouchableOpacity style={styles.headerLeftButton} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.headerLeftButton} onPress={() => {
+              closeAllSwipeables();
+              router.back();
+            }}>
               <Ionicons name="home-outline" size={24} color={colors.text} />
             </TouchableOpacity>
           )}
@@ -442,12 +493,18 @@ export default function WeChatScreen() {
           <View style={styles.headerRight}>
             {activeTab === 'contacts' ? (
               // 通讯录页面显示添加好友按钮
-              <TouchableOpacity style={styles.headerButton} onPress={() => Alert.alert('添加好友', '添加好友功能待实现')}>
+              <TouchableOpacity style={styles.headerButton} onPress={() => {
+                closeAllSwipeables();
+                Alert.alert('添加好友', '添加好友功能待实现');
+              }}>
                 <Ionicons name="person-add" size={24} color={colors.text} />
               </TouchableOpacity>
             ) : (
               // 其他页面显示AI聊天按钮
-              <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/wechat/ai-chat' as any)}>
+              <TouchableOpacity style={styles.headerButton} onPress={() => {
+                closeAllSwipeables();
+                router.push('/wechat/ai-chat' as any);
+              }}>
                 <Ionicons name="add-circle" size={24} color={colors.text} />
               </TouchableOpacity>
             )}
@@ -462,7 +519,11 @@ export default function WeChatScreen() {
       
       {/* 底部标签栏 */}
       <View style={[styles.tabBar, { backgroundColor: colors.tabBarBackground, borderTopColor: colors.tabBarBorder }]}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('chats')}>
+        <TouchableOpacity style={styles.tabItem} onPress={() => {
+          // 切换标签时关闭所有Swipeable
+          closeAllSwipeables();
+          setActiveTab('chats');
+        }}>
           <Ionicons 
             name="chatbubble" 
             size={Platform.OS === 'ios' ? 28 : 24} 
@@ -473,7 +534,11 @@ export default function WeChatScreen() {
           </Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('contacts')}>
+        <TouchableOpacity style={styles.tabItem} onPress={() => {
+          // 切换标签时关闭所有Swipeable
+          closeAllSwipeables();
+          setActiveTab('contacts');
+        }}>
           <Ionicons 
             name="people" 
             size={Platform.OS === 'ios' ? 28 : 24} 
@@ -484,7 +549,11 @@ export default function WeChatScreen() {
           </Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('discover')}>
+        <TouchableOpacity style={styles.tabItem} onPress={() => {
+          // 切换标签时关闭所有Swipeable
+          closeAllSwipeables();
+          setActiveTab('discover');
+        }}>
           <Ionicons 
             name="compass" 
             size={Platform.OS === 'ios' ? 28 : 24} 
@@ -495,7 +564,11 @@ export default function WeChatScreen() {
           </Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('me')}>
+        <TouchableOpacity style={styles.tabItem} onPress={() => {
+          // 切换标签时关闭所有Swipeable
+          closeAllSwipeables();
+          setActiveTab('me');
+        }}>
           <Ionicons 
             name="person" 
             size={Platform.OS === 'ios' ? 28 : 24} 

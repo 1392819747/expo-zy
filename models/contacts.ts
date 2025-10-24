@@ -178,36 +178,12 @@ export interface ContactFeature {
 
 export const contactFeatures: ContactFeature[] = [
   {
-    id: 'new-friends',
-    name: '新的朋友',
-    icon: 'person-add',
-    bgColor: '#ff9500',
-    iconColor: '#ffffff',
-    route: '/wechat/new-friends'
-  },
-  {
     id: 'group-chats',
     name: '群聊',
     icon: 'people',
     bgColor: '#007aff',
     iconColor: '#ffffff',
     route: '/wechat/group-chats'
-  },
-  {
-    id: 'tags',
-    name: '标签',
-    icon: 'pricetag',
-    bgColor: '#34c759',
-    iconColor: '#ffffff',
-    route: '/wechat/tags'
-  },
-  {
-    id: 'official-accounts',
-    name: '公众号',
-    icon: 'star',
-    bgColor: '#ff3b30',
-    iconColor: '#ffffff',
-    route: '/wechat/official-accounts'
   }
 ];
 

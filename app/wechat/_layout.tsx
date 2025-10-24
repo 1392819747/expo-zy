@@ -32,10 +32,18 @@ export default function WeChatLayout() {
   const isContactsPage = currentTab === 'contacts';
   
   return (
-    <Stack 
+    <Stack
       screenOptions={{
         // 只在iOS 26+启用原生导航栏效果
         headerTransparent: false,
+        headerLargeTitle: false,
+        headerShadowVisible: true,
+        headerTitleStyle: {
+          fontSize: 17,
+          fontWeight: '600',
+          color: '#111111',
+          fontFamily: 'System',
+        },
         headerStyle: {
           backgroundColor: '#ededed',
         },
@@ -47,12 +55,7 @@ export default function WeChatLayout() {
           // iOS 26+使用原生导航栏，低版本使用自定义导航栏
           headerShown: isIOS26OrAbove,
           title: getTitle(),
-          headerStyle: {
-            backgroundColor: '#ededed',
-          },
-          headerTitleStyle: {
-            fontWeight: '600',
-          },
+          headerTitleAlign: 'center',
           // iOS 26+使用系统原生返回图标样式
           headerBackTitle: '',
           // iOS 26+添加左侧返回按钮和右侧加号按钮
@@ -119,6 +122,18 @@ export default function WeChatLayout() {
         options={{
           headerShown: isIOS26OrAbove,
           title: 'AI聊天',
+          headerTransparent: false,
+          headerStyle: {
+            backgroundColor: '#ededed',
+          },
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="chat-detail"
+        options={{
+          headerShown: isIOS26OrAbove,
+          title: '聊天',
           headerTransparent: false,
           headerStyle: {
             backgroundColor: '#ededed',

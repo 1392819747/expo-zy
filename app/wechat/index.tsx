@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, SafeAreaView, Platform, TextInput, FlatList, Alert } from 'react-native';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, SafeAreaView, Platform, TextInput, Alert, SectionList } from 'react-native';
+import type { SectionList as SectionListType } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import Constants from 'expo-constants';
 import { 
   Contact, 
   mockContacts, 
@@ -15,50 +15,50 @@ import {
 export default function WeChatScreen() {
   const [activeTab, setActiveTab] = useState('chats');
   const [contactsSearchQuery, setContactsSearchQuery] = useState('');
+  const sectionListRef = useRef<SectionListType<Contact>>(null);
   
   // 判断是否为iOS 26及以上系统
   const isIOS26OrAbove = Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 26;
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<string[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
 
   // 更新导航栏标题的函数
-  const updateNavigationTitle = () => {
-    if (isIOS26OrAbove) {
-      // 对于iOS 26+，我们需要通过其他方式更新标题
-      // 这里我们可以使用状态管理或者全局事件来通知layout更新
-      const title = activeTab === 'chats' ? '微信' : 
-                   activeTab === 'contacts' ? '通讯录' : 
-                   activeTab === 'discover' ? '发现' : '我';
-      
-      // 通过路由参数传递当前标签页信息
-      router.setParams({ tab: activeTab });
-    }
-  };
-
   // 监听标签页变化，更新导航栏标题
   useEffect(() => {
-    updateNavigationTitle();
-  }, [activeTab]);
+    if (isIOS26OrAbove) {
+      router.setParams({ tab: activeTab });
+    }
+  }, [activeTab, isIOS26OrAbove, router]);
 
   // 确保路由参数与当前标签页同步
-  useFocusEffect(() => {
-    router.setParams({ tab: activeTab });
-  });
+  useFocusEffect(
+    useCallback(() => {
+      if (isIOS26OrAbove) {
+        router.setParams({ tab: activeTab });
+      }
+    }, [router, activeTab, isIOS26OrAbove])
+  );
 
   // 过滤和分组联系人
-  const { groupedContacts, initials, filteredContacts } = useMemo(() => {
+  const { groupedContacts, initials } = useMemo(() => {
     const filtered = searchContacts(mockContacts, contactsSearchQuery);
     const grouped = groupContactsByInitial(filtered);
     const initialsList = getAllInitials(filtered);
-    
-    return { 
-      groupedContacts: grouped, 
+
+    return {
+      groupedContacts: grouped,
       initials: initialsList,
-      filteredContacts: filtered
     };
   }, [contactsSearchQuery]);
+
+  const contactSections = useMemo(
+    () =>
+      Object.entries(groupedContacts).map(([title, contacts]) => ({
+        title,
+        data: contacts,
+      })),
+    [groupedContacts]
+  );
 
   // 渲染聊天页面
   const renderChats = () => {
@@ -66,7 +66,7 @@ export default function WeChatScreen() {
     const renderChatItem = ({ item }: { item: any }) => (
       <TouchableOpacity
         style={styles.chatItem}
-        onPress={() => Alert.alert('聊天详情', `打开与 ${item.name} 的聊天`)}
+        onPress={() => router.push(`/wechat/chat-detail?id=${item.id}` as any)}
       >
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
@@ -88,12 +88,12 @@ export default function WeChatScreen() {
 
     // 模拟聊天数据
     const mockChats = [
-      { id: 1, name: '文件传输助手', message: '你可以在这里接收文件', time: '上午 10:30', unread: 0 },
-      { id: 2, name: '张三', message: '好的，明天见！', time: '上午 9:45', unread: 2 },
-      { id: 3, name: '李四', message: '项目进展如何？', time: '昨天', unread: 1 },
-      { id: 4, name: '王五', message: '收到，谢谢！', time: '星期三', unread: 0 },
-      { id: 5, name: '团队群', message: '赵六: 会议改到下午3点', time: '星期二', unread: 5 },
-      { id: 6, name: '通知', message: '系统维护通知', time: '星期一', unread: 0 },
+      { id: 'assistant', name: '文件传输助手', message: '你可以在这里接收文件', time: '上午 10:30', unread: 0 },
+      { id: '1', name: '张三', message: '好的，明天见！', time: '上午 9:45', unread: 2 },
+      { id: '2', name: '李四', message: '项目进展如何？', time: '昨天', unread: 1 },
+      { id: '3', name: '王五', message: '收到，谢谢！', time: '星期三', unread: 0 },
+      { id: 'group', name: '团队群', message: '赵六: 会议改到下午3点', time: '星期二', unread: 5 },
+      { id: 'notifications', name: '通知', message: '系统维护通知', time: '星期一', unread: 0 },
     ];
 
     return (
@@ -164,12 +164,16 @@ export default function WeChatScreen() {
     // 渲染右侧字母索引
     const renderAlphabetIndex = () => (
       <View style={styles.alphabetIndex}>
-        {initials.map((initial) => (
+        {initials.map((initial, index) => (
           <TouchableOpacity
             key={initial}
             style={styles.alphabetItem}
             onPress={() => {
-              // 这里可以添加滚动到对应字母的逻辑
+              sectionListRef.current?.scrollToLocation({
+                sectionIndex: index,
+                itemIndex: 0,
+                animated: true,
+              });
             }}
           >
             <Text style={styles.alphabetText}>{initial}</Text>
@@ -180,53 +184,52 @@ export default function WeChatScreen() {
 
     return (
       <View style={styles.contactsContainer}>
-        {/* 搜索框 */}
-        <View style={styles.contactsSearchContainer}>
-          <View style={styles.contactsSearchInput}>
-            <Ionicons name="search" size={16} color="#999999" />
-            <TextInput
-              style={styles.contactsSearchTextInput}
-              placeholder="搜索联系人"
-              value={contactsSearchQuery}
-              onChangeText={setContactsSearchQuery}
-              placeholderTextColor="#999999"
-            />
-          </View>
-        </View>
-
-        {/* 功能区域 */}
-        <View style={styles.featuresContainer}>
-          {contactFeatures.map((feature, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.featureItem}
-              onPress={() => {
-                if (feature.route) {
-                  router.push(feature.route as any);
-                }
-              }}
-            >
-              <View style={[styles.featureIcon, { backgroundColor: feature.bgColor }]}>
-                <Ionicons name={feature.icon as any} size={24} color={feature.iconColor} />
-              </View>
-              <Text style={styles.featureName}>{feature.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* 联系人列表 */}
-        <View style={styles.contactsListContainer}>
-          {Object.entries(groupedContacts).map(([title, contacts]) => (
-            <View key={title}>
-              {renderSectionHeader({ title })}
-              {contacts.map((contact) => (
-                <View key={contact.id}>
-                  {renderContactItem({ item: contact })}
+        <SectionList
+          ref={sectionListRef}
+          sections={contactSections}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => renderContactItem({ item })}
+          renderSectionHeader={({ section }) => renderSectionHeader({ title: section.title })}
+          stickySectionHeadersEnabled
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.contactsListContent}
+          ListHeaderComponent={(
+            <>
+              <View style={styles.contactsSearchContainer}>
+                <View style={styles.contactsSearchInput}>
+                  <Ionicons name="search" size={16} color="#999999" />
+                  <TextInput
+                    style={styles.contactsSearchTextInput}
+                    placeholder="搜索联系人"
+                    value={contactsSearchQuery}
+                    onChangeText={setContactsSearchQuery}
+                    placeholderTextColor="#999999"
+                  />
                 </View>
-              ))}
-            </View>
-          ))}
-        </View>
+              </View>
+
+              <View style={styles.featuresContainer}>
+                {contactFeatures.map((feature, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.featureItem}
+                    onPress={() => {
+                      if (feature.route) {
+                        router.push(feature.route as any);
+                      }
+                    }}
+                  >
+                    <View style={[styles.featureIcon, { backgroundColor: feature.bgColor }]}>
+                      <Ionicons name={feature.icon as any} size={24} color={feature.iconColor} />
+                    </View>
+                    <Text style={styles.featureName}>{feature.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+        />
 
         {/* 右侧字母索引 */}
         {renderAlphabetIndex()}
@@ -556,6 +559,10 @@ const styles = StyleSheet.create({
   contactsListContainer: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  contactsListContent: {
+    backgroundColor: '#ffffff',
+    paddingBottom: 32,
   },
   sectionHeader: {
     backgroundColor: '#f5f5f5',

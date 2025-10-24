@@ -267,6 +267,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#111',
     padding: 0,
+    paddingVertical: 0,
+    textAlignVertical: 'top',
+    includeFontPadding: false,
+    lineHeight: 20,
   },
   sendButton: {
     paddingHorizontal: 12,

@@ -529,6 +529,20 @@ const styles = StyleSheet.create({
     color: '#000',
     marginLeft: 8,
     padding: 0,
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+    textAlignVertical: 'center',
+=======
+    padding: 0,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
   },
   featuresContainer: {
     backgroundColor: '#ffffff',
@@ -642,6 +656,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   chatsListContainer: {
     flex: 1,

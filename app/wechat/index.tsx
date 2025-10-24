@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, SafeAreaView, Platform, TextInput, Alert, SectionList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Platform, TextInput, Alert, SectionList } from 'react-native';
 import type { SectionList as SectionListType } from 'react-native';
+import type { Edge } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { 
@@ -18,8 +20,12 @@ export default function WeChatScreen() {
   const sectionListRef = useRef<SectionListType<Contact>>(null);
   
   // 判断是否为iOS 26及以上系统
-  const isIOS26OrAbove = Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 26;
+  const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
   const router = useRouter();
+  const safeAreaInsets = useSafeAreaInsets();
+  const safeAreaEdges: Edge[] = isIOS26OrAbove
+    ? ['left', 'right', 'bottom']
+    : ['top', 'left', 'right', 'bottom'];
   const [searchQuery, setSearchQuery] = useState('');
 
   // 更新导航栏标题的函数
@@ -288,7 +294,7 @@ export default function WeChatScreen() {
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#f7f7f7', height: 50 }} />
       )}
       
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={safeAreaEdges}>
         <StatusBar barStyle="dark-content" backgroundColor="#ededed" />
 
         {/* 顶部导航栏 - iOS 26以下显示自定义导航栏 */}
@@ -334,7 +340,17 @@ export default function WeChatScreen() {
       </SafeAreaView>
       
       {/* 底部标签栏 - 移出SafeAreaView以突破安全区域限制 */}
-      <View style={styles.tabBar}>
+      <View
+        style={[
+          styles.tabBar,
+          {
+            paddingBottom:
+              Platform.OS === 'ios'
+                ? Math.max(safeAreaInsets.bottom, 20)
+                : Math.max(safeAreaInsets.bottom, 16),
+          },
+        ]}
+      >
         <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('chats')}>
           <Ionicons 
             name="chatbubble" 
@@ -494,7 +510,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f7f7f7',
     borderTopWidth: 0.5,
     borderTopColor: '#d9d9d9',
-    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
     paddingTop: 8,
   },
   tabItem: {
@@ -529,6 +544,7 @@ const styles = StyleSheet.create({
     color: '#000',
     marginLeft: 8,
     padding: 0,
+    textAlignVertical: 'center',
   },
   featuresContainer: {
     backgroundColor: '#ffffff',
@@ -642,6 +658,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+    textAlignVertical: 'center',
   },
   chatsListContainer: {
     flex: 1,

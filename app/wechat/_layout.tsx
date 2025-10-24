@@ -7,7 +7,9 @@ export default function WeChatLayout() {
   const router = useRouter();
   const params = useGlobalSearchParams();
   // 检测iOS 26及以上版本
-  const isIOS26OrAbove = Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 26;
+  const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
+  const isAndroid = Platform.OS === 'android';
+  const shouldShowStackHeader = isIOS26OrAbove || isAndroid;
   
   // 使用状态来跟踪当前标签页
   const [currentTab, setCurrentTab] = useState(params.tab as string || 'chats');
@@ -49,9 +51,9 @@ export default function WeChatLayout() {
         },
       }}
     >
-      <Stack.Screen 
-        name="index" 
-        options={{ 
+      <Stack.Screen
+        name="index"
+        options={{
           // iOS 26+使用原生导航栏，低版本使用自定义导航栏
           headerShown: isIOS26OrAbove,
           title: getTitle(),
@@ -60,9 +62,9 @@ export default function WeChatLayout() {
           headerBackTitle: '',
           // iOS 26+添加左侧返回按钮和右侧加号按钮
           headerLeft: isIOS26OrAbove && !isContactsPage ? () => (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => router.back()}
-              style={{ 
+              style={{
                 marginLeft: 2,
                 paddingHorizontal: 4,
                 paddingVertical: 6,
@@ -76,7 +78,7 @@ export default function WeChatLayout() {
             </TouchableOpacity>
           ) : undefined,
           headerRight: isIOS26OrAbove ? () => (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
                 if (isContactsPage) {
                   // 通讯录页面显示添加好友功能
@@ -86,7 +88,7 @@ export default function WeChatLayout() {
                   router.push('/wechat/ai-chat' as any);
                 }
               }}
-              style={{ 
+              style={{
                 marginLeft: 3,
                 marginRight: 0,
                 paddingHorizontal: 4,
@@ -97,12 +99,12 @@ export default function WeChatLayout() {
               <Ionicons name={isContactsPage ? "person-add" : "add"} size={22} color="#000" />
             </TouchableOpacity>
           ) : undefined,
-        }} 
+        }}
       />
       <Stack.Screen
         name="search"
         options={{
-          headerShown: isIOS26OrAbove,
+          headerShown: shouldShowStackHeader,
           title: '搜索',
           headerTransparent: false,
           headerStyle: {
@@ -120,7 +122,7 @@ export default function WeChatLayout() {
       <Stack.Screen
         name="ai-chat"
         options={{
-          headerShown: isIOS26OrAbove,
+          headerShown: shouldShowStackHeader,
           title: 'AI聊天',
           headerTransparent: false,
           headerStyle: {
@@ -132,7 +134,7 @@ export default function WeChatLayout() {
       <Stack.Screen
         name="chat-detail"
         options={{
-          headerShown: isIOS26OrAbove,
+          headerShown: shouldShowStackHeader,
           title: '聊天',
           headerTransparent: false,
           headerStyle: {

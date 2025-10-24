@@ -34,14 +34,16 @@ import Sortable, {
 } from 'react-native-sortables';
 
 import { fetchWeatherByLocation, fetchWeatherData, getUserLocation, WeatherData } from '../../services/weatherService';
+import ApiSettingsIcon from '../../components/icons/ApiSettingsIcon';
 
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type AppIconItem = {
-  image: ImageSourcePropType;
+  image?: ImageSourcePropType;
   kind: 'app';
   label: string;
+  renderIcon?: (size: number) => JSX.Element;
 };
 
 type WeatherWidgetItem = {
@@ -76,7 +78,8 @@ const createDockItemFromBoard = (item: BoardItem): AppIconItem => {
     return {
       image: item.image,
       kind: 'app',
-      label: item.label
+      label: item.label,
+      renderIcon: item.renderIcon
     };
   }
   throw new Error('Cannot create dock item from weather widget');
@@ -88,7 +91,11 @@ const APP_ICONS: AppIconItem[] = [
   { image: require('../../assets/images/app-icons/twitter.png'), kind: 'app', label: 'Twitter' },
   { image: require('../../assets/images/app-icons/whatsapp.png'), kind: 'app', label: 'WhatsApp' },
   { image: require('../../assets/images/app-icons/wechat.png'), kind: 'app', label: 'WeChat' },
-  { image: require('../../assets/images/app-icons/api-settings.png'), kind: 'app', label: 'API Settings' },
+  {
+    kind: 'app',
+    label: 'API Settings',
+    renderIcon: size => <ApiSettingsIcon size={size} />
+  },
   { image: require('../../assets/images/app-icons/gmail.png'), kind: 'app', label: 'Gmail' },
   { image: require('../../assets/images/app-icons/google.png'), kind: 'app', label: 'Google' },
   { image: require('../../assets/images/app-icons/youtube.png'), kind: 'app', label: 'YouTube' },
@@ -270,11 +277,21 @@ const Icon = memo(function Icon({
             width: iconContainerSize
           }
         ]}>
-        <Image
-          resizeMode='contain'
-          source={item.image}
-          style={{ height: imageSize, width: imageSize }}
-        />
+        {item.renderIcon ? (
+          <View style={[styles.iconVectorContainer, { height: imageSize, width: imageSize }]}> 
+            {item.renderIcon(imageSize)}
+          </View>
+        ) : item.image ? (
+          <Image
+            resizeMode='contain'
+            source={item.image}
+            style={{ height: imageSize, width: imageSize }}
+          />
+        ) : (
+          <View style={[styles.iconFallback, { borderRadius: iconCornerRadius - 2 }]}> 
+            <Text style={styles.iconFallbackText}>{item.label.slice(0, 1)}</Text>
+          </View>
+        )}
       </View>
       {showLabel && (
         <Text numberOfLines={1} style={styles.text}>
@@ -1422,6 +1439,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     padding: 6
+  },
+  iconVectorContainer: {
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%'
+  },
+  iconFallback: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(15,23,42,0.12)',
+    borderWidth: 0,
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%'
+  },
+  iconFallbackText: {
+    color: '#1F2937',
+    fontSize: 16,
+    fontWeight: '700'
   },
   text: {
     color: 'white',

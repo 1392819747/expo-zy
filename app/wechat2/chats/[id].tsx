@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +31,17 @@ const MOCK_MESSAGES: Message[] = [
   { id: '4', text: '好的，我们最近更新了很多新功能，包括视频号、直播等', time: '10:33', isSent: true },
 ];
 
+const EMOJIS = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳'];
+
+const MORE_OPTIONS = [
+  { id: 'photo', label: '相册', icon: 'images-outline', color: '#628CFC' },
+  { id: 'camera', label: '拍摄', icon: 'camera-outline', color: '#FF9500' },
+  { id: 'video-call', label: '视频通话', icon: 'videocam-outline', color: '#34C759' },
+  { id: 'location', label: '位置', icon: 'location-outline', color: '#5856D6' },
+  { id: 'file', label: '文件', icon: 'document-outline', color: '#FF2D55' },
+  { id: 'contact', label: '联系人', icon: 'person-outline', color: '#FF9500' },
+];
+
 export default function ChatDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -36,6 +49,8 @@ export default function ChatDetailScreen() {
   
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
   const [inputText, setInputText] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const name = (params.name as string) || '聊天';
@@ -56,6 +71,10 @@ export default function ChatDetailScreen() {
       setInputText('');
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setInputText(prev => prev + emoji);
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
@@ -121,10 +140,16 @@ export default function ChatDetailScreen() {
               maxLength={500}
             />
           </View>
-          <TouchableOpacity style={styles.inputButton}>
+          <TouchableOpacity style={styles.inputButton} onPress={() => {
+            setShowEmojiPicker(!showEmojiPicker);
+            setShowMoreOptions(false);
+          }}>
             <Ionicons name="happy-outline" size={26} color={theme.text5} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.inputButton}>
+          <TouchableOpacity style={styles.inputButton} onPress={() => {
+            setShowMoreOptions(!showMoreOptions);
+            setShowEmojiPicker(false);
+          }}>
             <Ionicons name="add-circle-outline" size={26} color={theme.text5} />
           </TouchableOpacity>
           {inputText.trim() ? (
@@ -133,6 +158,58 @@ export default function ChatDetailScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
+
+        {/* Emoji Picker Modal */}
+        <Modal visible={showEmojiPicker} transparent animationType="slide">
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowEmojiPicker(false)}>
+            <View style={[styles.emojiPicker, { backgroundColor: theme.bg1 }]}>
+              <View style={styles.emojiHeader}>
+                <Text style={[styles.emojiTitle, { color: theme.text5 }]}>表情</Text>
+                <TouchableOpacity onPress={() => setShowEmojiPicker(false)}>
+                  <Ionicons name="close" size={24} color={theme.text5} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={styles.emojiGrid} showsVerticalScrollIndicator={false}>
+                {EMOJIS.map((emoji, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.emojiButton}
+                    onPress={() => {
+                      handleEmojiSelect(emoji);
+                      setShowEmojiPicker(false);
+                    }}
+                  >
+                    <Text style={styles.emojiText}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* More Options Modal */}
+        <Modal visible={showMoreOptions} transparent animationType="slide">
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowMoreOptions(false)}>
+            <View style={[styles.moreOptions, { backgroundColor: theme.bg1 }]}>
+              <View style={styles.moreHeader}>
+                <Text style={[styles.moreTitle, { color: theme.text5 }]}>更多</Text>
+                <TouchableOpacity onPress={() => setShowMoreOptions(false)}>
+                  <Ionicons name="close" size={24} color={theme.text5} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.moreGrid}>
+                {MORE_OPTIONS.map(option => (
+                  <TouchableOpacity key={option.id} style={styles.moreButton} onPress={() => setShowMoreOptions(false)}>
+                    <View style={[styles.moreIcon, { backgroundColor: option.color }]}>
+                      <Ionicons name={option.icon as any} size={28} color="#fff" />
+                    </View>
+                    <Text style={[styles.moreLabel, { color: theme.text5 }]}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -171,4 +248,83 @@ const styles = StyleSheet.create({
   input: { fontSize: 16, maxHeight: 84, minHeight: 20 },
   sendButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
   sendButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  emojiPicker: {
+    height: 320,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingTop: 16,
+  },
+  emojiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#eee',
+  },
+  emojiTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+  },
+  emojiButton: {
+    width: '12.5%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emojiText: {
+    fontSize: 28,
+  },
+  moreOptions: {
+    height: 280,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingTop: 16,
+  },
+  moreHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#eee',
+  },
+  moreTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  moreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+    gap: 12,
+  },
+  moreButton: {
+    width: '22%',
+    alignItems: 'center',
+    gap: 8,
+  },
+  moreIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
 });

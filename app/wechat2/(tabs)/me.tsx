@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useWeChatTheme } from './useWeChatTheme';
+import { useWeChatTheme } from '../useWeChatTheme';
 
 const MENU_GROUPS = [
   [
@@ -34,7 +34,7 @@ export default function WeChat2MeScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         <View style={[styles.profileCard, { backgroundColor: theme.bg1 }]}>
           <Image
-            source={require('../../assets/images/wechat/avatar-wechat.png')}
+            source={require('../../../assets/images/wechat/avatar-wechat.png')}
             style={styles.profileAvatar}
           />
           <View style={styles.profileInfo}>

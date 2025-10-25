@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useWeChatTheme } from './useWeChatTheme';
+import { useWeChatTheme } from '../useWeChatTheme';
 
 type QuickAction = {
   id: string;
@@ -43,26 +43,26 @@ const CONTACT_SECTIONS: ContactSection[] = [
   {
     title: 'A',
     data: [
-      { id: '1', name: 'Alice', pinyin: 'Alice', avatar: require('../../assets/images/wechat/avatar-girl.png') },
+      { id: '1', name: 'Alice', pinyin: 'Alice', avatar: require('../../../assets/images/wechat/avatar-girl.png') },
     ],
   },
   {
     title: 'L',
     data: [
-      { id: '2', name: '李明', pinyin: 'Li Ming', avatar: require('../../assets/images/wechat/avatar-man.png') },
+      { id: '2', name: '李明', pinyin: 'Li Ming', avatar: require('../../../assets/images/wechat/avatar-man.png') },
     ],
   },
   {
     title: 'W',
     data: [
-      { id: '3', name: '王华', pinyin: 'Wang Hua', avatar: require('../../assets/images/wechat/avatar-man.png') },
+      { id: '3', name: '王华', pinyin: 'Wang Hua', avatar: require('../../../assets/images/wechat/avatar-man.png') },
     ],
   },
   {
     title: 'Z',
     data: [
-      { id: '4', name: '张伟', pinyin: 'Zhang Wei', avatar: require('../../assets/images/wechat/avatar-man.png') },
-      { id: '5', name: '赵静', pinyin: 'Zhao Jing', avatar: require('../../assets/images/wechat/avatar-girl.png') },
+      { id: '4', name: '张伟', pinyin: 'Zhang Wei', avatar: require('../../../assets/images/wechat/avatar-man.png') },
+      { id: '5', name: '赵静', pinyin: 'Zhao Jing', avatar: require('../../../assets/images/wechat/avatar-girl.png') },
     ],
   },
 ];

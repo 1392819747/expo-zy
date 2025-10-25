@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useWeChatTheme } from './useWeChatTheme';
+import { useWeChatTheme } from '../useWeChatTheme';
 
 type ChatItem = {
   id: string;
@@ -29,7 +29,7 @@ const MOCK_CHATS: ChatItem[] = [
     message: '[文件]',
     time: '上午 9:15',
     unread: 0,
-    avatar: require('../../assets/images/wechat/avatar-assistant.png'),
+    avatar: require('../../../../assets/images/wechat/avatar-assistant.png'),
   },
   {
     id: '2',
@@ -37,7 +37,7 @@ const MOCK_CHATS: ChatItem[] = [
     message: '明天记得开会',
     time: '昨天',
     unread: 2,
-    avatar: require('../../assets/images/wechat/avatar-man.png'),
+    avatar: require('../../../../assets/images/wechat/avatar-man.png'),
   },
   {
     id: '3',
@@ -45,7 +45,7 @@ const MOCK_CHATS: ChatItem[] = [
     message: '晚饭吃什么？',
     time: '星期三',
     unread: 0,
-    avatar: require('../../assets/images/wechat/avatar-girl.png'),
+    avatar: require('../../../../assets/images/wechat/avatar-girl.png'),
   },
   {
     id: '4',
@@ -53,7 +53,7 @@ const MOCK_CHATS: ChatItem[] = [
     message: '欢迎体验全新的 WeChat 2',
     time: '星期二',
     unread: 1,
-    avatar: require('../../assets/images/wechat/avatar-wechat.png'),
+    avatar: require('../../../../assets/images/wechat/avatar-wechat.png'),
   },
   {
     id: '5',
@@ -61,7 +61,7 @@ const MOCK_CHATS: ChatItem[] = [
     message: '李明: 今天的设计稿已发送',
     time: '星期一',
     unread: 0,
-    avatar: require('../../assets/images/wechat/avatar-man.png'),
+    avatar: require('../../../../assets/images/wechat/avatar-man.png'),
     isGroup: true,
   },
 ];

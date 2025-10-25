@@ -8,7 +8,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useWeChatTheme } from './useWeChatTheme';
+import { useRouter } from 'expo-router';
+import { useWeChatTheme } from '../useWeChatTheme';
 
 type DiscoverItem = {
   id: string;
@@ -31,12 +32,19 @@ const DISCOVER_ITEMS: DiscoverItem[] = [
 
 export default function WeChat2DiscoverScreen() {
   const theme = useWeChatTheme();
+  const router = useRouter();
+
+  const handleItemPress = (itemId: string) => {
+    if (itemId === 'moments') {
+      router.push('/wechat2/discover/moments');
+    }
+  };
 
   const renderGroup = (items: DiscoverItem[]) => (
     <View style={[styles.group, { backgroundColor: theme.bg1 }]}>
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
-          <TouchableOpacity style={styles.item} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.item} activeOpacity={0.8} onPress={() => handleItemPress(item.id)}>
             <View style={styles.itemLeft}>
               <Ionicons name={item.icon as any} size={22} color={item.color} />
               <Text style={[styles.itemTitle, { color: theme.text5 }]}>{item.title}</Text>

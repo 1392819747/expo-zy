@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 const CHAT_LIST = [
@@ -49,6 +50,7 @@ const CHAT_LIST = [
 
 export default function WeChat2ChatsScreen() {
   const { colors } = useThemeColors();
+  const router = useRouter();
 
   const headerStyle = useMemo(
     () => ({
@@ -63,6 +65,7 @@ export default function WeChat2ChatsScreen() {
       <TouchableOpacity
         style={[styles.chatItem, { borderBottomColor: colors.border }]}
         activeOpacity={0.8}
+        onPress={() => router.push(`/wechat2/chats/${item.id}?name=${encodeURIComponent(item.name)}`)}
       >
         <Image source={item.avatar} style={styles.chatAvatar} />
         <View style={styles.chatContent}>

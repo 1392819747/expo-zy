@@ -2,12 +2,12 @@ import React from 'react';
 import {
   View,
   Text,
-  SafeAreaView,
   StyleSheet,
   TouchableOpacity,
   Image,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
@@ -54,8 +54,8 @@ export default function WeChat2MeScreen() {
   const { colors } = useThemeColors();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]}>
-      <View style={[styles.header, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: colors.backgroundSecondary }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>我</Text>
       </View>
 

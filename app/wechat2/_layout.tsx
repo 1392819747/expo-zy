@@ -59,6 +59,18 @@ export default function WeChat2Layout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="chats/[id]"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="contacts/[id]"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

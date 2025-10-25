@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 const QUICK_ACTIONS = [
@@ -49,6 +50,7 @@ const CONTACTS = [
 
 export default function WeChat2ContactsScreen() {
   const { colors } = useThemeColors();
+  const router = useRouter();
 
   const renderQuickAction = ({ item }: { item: (typeof QUICK_ACTIONS)[number] }) => {
     return (
@@ -63,7 +65,10 @@ export default function WeChat2ContactsScreen() {
 
   const renderContact = ({ item }: { item: any }) => {
     return (
-      <TouchableOpacity style={[styles.contactItem, { borderBottomColor: colors.border }]}>
+      <TouchableOpacity
+        style={[styles.contactItem, { borderBottomColor: colors.border }]}
+        onPress={() => router.push(`/wechat2/contacts/${item.id}`)}
+      >
         <Image source={item.avatar} style={styles.contactAvatar} />
         <Text style={[styles.contactName, { color: colors.text }]}>{item.name}</Text>
       </TouchableOpacity>

@@ -3,16 +3,17 @@ import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useLayoutEffect, useState } from 'react';
 import {
+  Dimensions,
+  Image,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Image,
-  Dimensions
+  View
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -115,6 +116,10 @@ export default function MomentsScreen() {
   const router = useRouter();
   const [moments, setMoments] = useState<MomentItem[]>(mockMoments);
   const insets = useSafeAreaInsets();
+  
+  // 检测iOS 26及以上版本
+  const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
+  const isAndroid = Platform.OS === 'android';
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -278,8 +283,14 @@ export default function MomentsScreen() {
     if (moment.likes.length === 0 && moment.comments.length === 0) return null;
 
     // 合并点赞和评论，按微信的显示方式
-    const allItems = [];
-    
+    const allItems: Array<{
+      type: 'like' | 'comment';
+      id: string;
+      content: string;
+      name?: string;
+      replyTo?: string;
+    }> = [];
+  
     if (moment.likes.length > 0) {
       allItems.push({
         type: 'like',
@@ -287,11 +298,14 @@ export default function MomentsScreen() {
         content: moment.likes.map(l => l.name).join(', ')
       });
     }
-    
+  
     moment.comments.forEach(comment => {
       allItems.push({
         type: 'comment',
-        ...comment
+        id: comment.id,
+        content: comment.content,
+        name: comment.name,
+        replyTo: comment.replyTo
       });
     });
 
@@ -309,17 +323,19 @@ export default function MomentsScreen() {
                 </Text>
               </View>
             ) : (
-              <TouchableOpacity 
-                style={styles.commentItem} 
-                onPress={() => handleAddComment(moment.id, item.name)}
-              >
-                <Text style={[styles.commentUser, { color: '#1877f2' }]}>
-                  {item.name}
-                </Text>
-                <Text style={[styles.commentText, { color: '#333' }]}>
-                  {item.replyTo ? ` 回复 ${item.replyTo}` : ''}: {item.content}
-                </Text>
-              </TouchableOpacity>
+              item.type === 'comment' && (
+                <TouchableOpacity 
+                  style={styles.commentItem} 
+                  onPress={() => handleAddComment(moment.id, item.name)}
+                >
+                  <Text style={[styles.commentUser, { color: '#1877f2' }]}>
+                    {item.name}
+                  </Text>
+                  <Text style={[styles.commentText, { color: '#333' }]}>
+                    {item.replyTo ? ` 回复 ${item.replyTo}` : ''}: {item.content}
+                  </Text>
+                </TouchableOpacity>
+              )
             )}
           </View>
         ))}
@@ -328,99 +344,110 @@ export default function MomentsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      <ScrollView style={styles.scrollView}>
-        {/* 顶部封面区域 */}
-        <View style={styles.headerCover}>
-          {/* 渐变背景 */}
-          <View style={[styles.headerCover, { backgroundColor: '#07C160' }]} />
-          {/* 顶部标题和相机按钮 */}
-          <View style={styles.headerPlaceholder}>
-            <Text style={styles.headerTitle}>朋友圈</Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.cameraButton}
-            onPress={() => console.log('打开相机')}
-          >
-            <Ionicons name="camera" size={28} color="#fff" />
-          </TouchableOpacity>
-          {/* 个人信息区域 */}
-          <View style={styles.profileHeader}>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>当前用户</Text>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#07C160" />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* 顶部封面区域 */}
+          <View style={[styles.headerCover, { paddingTop: isAndroid ? 0 : insets.top }]}>
+            {/* 渐变背景 */}
+            <View style={[styles.headerCover, { backgroundColor: '#07C160' }]} />
+            {/* 顶部标题和相机按钮 */}
+            <View style={styles.headerPlaceholder}>
+              <Text style={styles.headerTitle}>朋友圈</Text>
             </View>
-            <View style={styles.profileAvatar}>
-              <Text style={{ fontSize: 24, color: '#07C160', fontWeight: '600' }}>我</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 动态列表 */}
-        {moments.map((moment) => (
-          <View 
-            key={moment.id} 
-            style={styles.momentItem}
-          >
-            {/* 用户信息 */}
-            <View style={styles.userInfo}>
-              <View style={[styles.avatar, { backgroundColor: '#07C160' }]}>
-                <Text style={styles.avatarText}>{moment.userName.charAt(0)}</Text>
+            {/* 左上角返回按钮 */}
+            <TouchableOpacity 
+              style={[styles.backButton, { top: isAndroid ? 50 : 50 }]}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="chevron-back" size={28} color="#fff" />
+            </TouchableOpacity>
+            {/* 右上角相机按钮 */}
+            <TouchableOpacity 
+              style={[styles.cameraButton, { top: isAndroid ? 50 : 50 }]}
+              onPress={() => console.log('打开相机')}
+            >
+              <Ionicons name="camera" size={28} color="#fff" />
+            </TouchableOpacity>
+            {/* 个人信息区域 */}
+            <View style={styles.profileHeader}>
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>当前用户</Text>
               </View>
-              <View style={styles.userInfoRight}>
-                <Text style={styles.userName}>{moment.userName}</Text>
-                <View style={styles.userInfoBottom}>
-                  <Text style={styles.time}>{moment.time}</Text>
-                  {moment.location && (
-                    <View style={styles.locationContainer}>
-                      <Ionicons name="location" size={12} color="#888" />
-                      <Text style={styles.location}>{moment.location}</Text>
-                    </View>
-                  )}
+              <View style={styles.profileAvatar}>
+                <Text style={{ fontSize: 24, color: '#07C160', fontWeight: '600' }}>我</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 动态列表 */}
+          {moments.map((moment) => (
+            <View 
+              key={moment.id} 
+              style={styles.momentItem}
+            >
+              {/* 用户信息 */}
+              <View style={styles.userInfo}>
+                <View style={[styles.avatar, { backgroundColor: '#07C160' }]}>
+                  <Text style={styles.avatarText}>{moment.userName.charAt(0)}</Text>
+                </View>
+                <View style={styles.userInfoRight}>
+                  <Text style={styles.userName}>{moment.userName}</Text>
+                  <View style={styles.userInfoBottom}>
+                    <Text style={styles.time}>{moment.time}</Text>
+                    {moment.location && (
+                      <View style={styles.locationContainer}>
+                        <Ionicons name="location" size={12} color="#888" />
+                        <Text style={styles.location}>{moment.location}</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {/* 动态内容 */}
-            <Text style={styles.textContent}>{moment.content}</Text>
+              {/* 动态内容 */}
+              <Text style={styles.textContent}>{moment.content}</Text>
 
-            {/* 图片网格 */}
-            {moment.images && moment.images.length > 0 && (
-              <View style={styles.imageGridContainer}>
-                {renderImageGrid(moment.images, moment.id)}
+              {/* 图片网格 */}
+              {moment.images && moment.images.length > 0 && (
+                <View style={styles.imageGridContainer}>
+                  {renderImageGrid(moment.images, moment.id)}
+                </View>
+              )}
+
+              {/* 点赞和评论 */}
+              {renderLikeAndComment(moment)}
+
+              {/* 操作按钮 */}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={() => handleLike(moment.id)}
+                >
+                  <Ionicons 
+                    name={moment.liked ? 'heart' : 'heart-outline'} 
+                    size={20} 
+                    color={moment.liked ? '#FA5151' : '#888'} 
+                  />
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.actionButton} onPress={() => handleAddComment(moment.id)}>
+                  <Ionicons name="chatbubble-outline" size={20} color="#888" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.actionButton}>
+                  <Ionicons name="ellipsis-horizontal" size={20} color="#888" />
+                </TouchableOpacity>
               </View>
-            )}
-
-            {/* 点赞和评论 */}
-            {renderLikeAndComment(moment)}
-
-            {/* 操作按钮 */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => handleLike(moment.id)}
-              >
-                <Ionicons 
-                  name={moment.liked ? 'heart' : 'heart-outline'} 
-                  size={20} 
-                  color={moment.liked ? '#FA5151' : '#888'} 
-                />
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.actionButton} onPress={() => handleAddComment(moment.id)}>
-                <Ionicons name="chatbubble-outline" size={20} color="#888" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="ellipsis-horizontal" size={20} color="#888" />
-              </TouchableOpacity>
             </View>
-          </View>
-        ))}
-        
-        {/* 底部填充 */}
-        <View style={{ height: 20 }} />
-      </ScrollView>
-    </SafeAreaView>
+          ))}
+          
+          {/* 底部填充 */}
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      </View>
+    </>
   );
 }
 
@@ -452,6 +479,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#fff',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    top: 50,
   },
   cameraButton: {
     position: 'absolute',

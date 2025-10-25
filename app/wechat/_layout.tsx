@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useRouter, useGlobalSearchParams, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Platform, Text, TouchableOpacity } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
@@ -13,6 +13,9 @@ export default function WeChatLayout() {
   const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
   const isAndroid = Platform.OS === 'android';
   const shouldShowStackHeader = isIOS26OrAbove || isAndroid;
+  
+  // 朋友圈页面应该隐藏导航栏，实现沉浸式体验
+  const shouldShowMomentsHeader = false;
   
   // 使用状态来跟踪当前标签页
   const [currentTab, setCurrentTab] = useState(params.tab as string || 'chats');
@@ -231,7 +234,7 @@ export default function WeChatLayout() {
       <Stack.Screen
         name="discover/moments"
         options={{
-          headerShown: isIOS26OrAbove,
+          headerShown: shouldShowMomentsHeader,
           title: '朋友圈',
           headerTransparent: false,
           headerStyle: {

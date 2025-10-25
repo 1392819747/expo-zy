@@ -36,6 +36,7 @@ import Sortable, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiSettingsIcon from '../../components/icons/ApiSettingsIcon';
 import WallpaperIcon from '../../components/icons/WallpaperIcon';
+import WeChat2Icon from '../../components/icons/WeChat2Icon';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { fetchWeatherByLocation, fetchWeatherData, getUserLocation, WeatherData } from '../../services/weatherService';
 
@@ -96,6 +97,11 @@ const APP_ICONS: AppIconItem[] = [
   { image: require('../../assets/images/app-icons/wechat.png'), kind: 'app', label: 'WeChat' },
   {
     kind: 'app',
+    label: 'WeChat 2',
+    renderIcon: size => <WeChat2Icon size={size} />
+  },
+  {
+    kind: 'app',
     label: 'API Settings',
     renderIcon: size => <ApiSettingsIcon size={size} />
   },
@@ -104,7 +110,6 @@ const APP_ICONS: AppIconItem[] = [
     label: 'Wallpaper',
     renderIcon: size => <WallpaperIcon size={size} />
   },
-  { image: require('../../assets/images/app-icons/gmail.png'), kind: 'app', label: 'Gmail' },
   { image: require('../../assets/images/app-icons/google.png'), kind: 'app', label: 'Google' },
   { image: require('../../assets/images/app-icons/youtube.png'), kind: 'app', label: 'YouTube' },
   { image: require('../../assets/images/app-icons/spotify.png'), kind: 'app', label: 'Spotify' },
@@ -681,6 +686,10 @@ export default function AppleIconSort() {
       void Haptics.selectionAsync();
       if (item.label === 'WeChat') {
         router.push('/wechat' as any);
+        return;
+      }
+      if (item.label === 'WeChat 2') {
+        router.push('/wechat2' as any);
         return;
       }
       if (item.label === 'API Settings') {

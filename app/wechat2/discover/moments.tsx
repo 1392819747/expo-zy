@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -45,10 +45,7 @@ export default function MomentsScreen() {
   const router = useRouter();
 
   const renderMoment = ({ item }: { item: typeof MOMENTS[number] }) => {
-    const likeText = useMemo(() => {
-      if (!item.likes.length) return '';
-      return item.likes.join('，');
-    }, [item.likes]);
+    const likeText = item.likes.length ? item.likes.join('，') : '';
 
     return (
       <View style={[styles.momentCard, { backgroundColor: theme.bg1 }]}>

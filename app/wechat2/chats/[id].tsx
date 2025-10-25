@@ -199,7 +199,7 @@ export default function ChatDetailScreen() {
               </View>
               <View style={styles.moreGrid}>
                 {MORE_OPTIONS.map(option => (
-                  <TouchableOpacity key={option.id} style={styles.moreButton} onPress={() => setShowMoreOptions(false)}>
+                  <TouchableOpacity key={option.id} style={styles.moreOptionButton} onPress={() => setShowMoreOptions(false)}>
                     <View style={[styles.moreIcon, { backgroundColor: option.color }]}>
                       <Ionicons name={option.icon as any} size={28} color="#fff" />
                     </View>
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  moreButton: {
+  moreOptionButton: {
     width: '22%',
     alignItems: 'center',
     gap: 8,

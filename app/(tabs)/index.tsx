@@ -18,6 +18,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { SortableGridRenderItem } from 'react-native-sortables';
 import Sortable, { useItemContext } from 'react-native-sortables';
+import { useRouter } from 'expo-router';
 
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -25,9 +26,11 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 type IconData = {
   image: ImageSourcePropType;
   label: string;
+  route?: string;
 };
 
 const ICONS: Array<IconData> = [
+  { image: require('../../assets/images/app-icons/zhizhihu.png'), label: '知之乎', route: '/zhizhihu/chats' },
   { image: require('../../assets/images/app-icons/facebook.png'), label: 'Facebook' },
   { image: require('../../assets/images/app-icons/instagram.png'), label: 'Instagram' },
   { image: require('../../assets/images/app-icons/twitter.png'), label: 'Twitter' },
@@ -53,9 +56,10 @@ type IconProps = {
   item: IconData;
   isEditing: SharedValue<boolean>;
   onDelete: (item: IconData) => void;
+  onPress: (item: IconData) => void;
 };
 
-const Icon = memo(function Icon({ isEditing, item, onDelete }: IconProps) {
+const Icon = memo(function Icon({ isEditing, item, onDelete, onPress }: IconProps) {
   const { isActive } = useItemContext();
 
   const shakeProgress = useDerivedValue(() =>
@@ -85,9 +89,9 @@ const Icon = memo(function Icon({ isEditing, item, onDelete }: IconProps) {
 
   return (
     <Animated.View style={[styles.icon, animatedShakeStyle]}>
-      <View style={styles.imageContainer}>
+      <Pressable onPress={() => onPress(item)} style={styles.imageContainer}>
         <Image source={item.image} style={styles.image} />
-      </View>
+      </Pressable>
       <Text style={styles.text}>{item.label}</Text>
       <AnimatedPressable
         style={[styles.deleteButton, animatedDeleteButtonStyle]}
@@ -102,6 +106,7 @@ export default function AppleIconSort() {
   const [icons, setIcons] = useState(ICONS);
   const [isEditing, setIsEditing] = useState(false);
   const isEditingValue = useDerivedValue(() => isEditing);
+  const router = useRouter();
 
   // 控制状态栏显示/隐藏
   useEffect(() => {
@@ -114,7 +119,13 @@ export default function AppleIconSort() {
 
   const handleIconDelete = useCallback((item: IconData) => {
     setIcons(prevIcons => prevIcons.filter(icon => icon.label !== item.label));
-    }, []);
+  }, []);
+
+  const handleIconPress = useCallback((item: IconData) => {
+    if (!isEditing && item.route) {
+      router.push(item.route);
+    }
+  }, [isEditing, router]);
 
   const renderItem = useCallback<SortableGridRenderItem<IconData>>(
     ({ item }) => (
@@ -122,9 +133,10 @@ export default function AppleIconSort() {
         isEditing={isEditingValue}
         item={item}
         onDelete={handleIconDelete}
+        onPress={handleIconPress}
       />
     ),
-    [isEditingValue, handleIconDelete]
+    [isEditingValue, handleIconDelete, handleIconPress]
   );
 
   return (

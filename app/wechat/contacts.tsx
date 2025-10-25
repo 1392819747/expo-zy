@@ -148,7 +148,7 @@ const ContactsScreen = () => {
       <View style={styles.listContainer}>
         <View style={styles.contactsHeader}>
           <Text style={styles.contactsCount}>通讯录 ({totalContacts})</Text>
-          <TouchableOpacity style={styles.addContactButton} onPress={() => Alert.alert('添加联系人', '添加联系人功能待实现')}>
+          <TouchableOpacity style={styles.addContactButton} onPress={() => router.push('/wechat/contact-add' as any)}>
             <Ionicons name="person-add" size={20} color="#07C160" />
           </TouchableOpacity>
         </View>
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   searchContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 0.5,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
     borderRadius: 6,
     paddingHorizontal: 10,
     height: 36,
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 4,
     backgroundColor: '#07C160',
     justifyContent: 'center',
     alignItems: 'center',

@@ -1,9 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, TextInput, Alert, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React from 'react';
+import { Alert, Platform, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Edge, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AddContactScreen() {
   const router = useRouter();
@@ -16,7 +15,7 @@ export default function AddContactScreen() {
   
   // contact-add页面始终使用自定义导航栏
   const hasNativeHeader = false;
-  const safeAreaEdges = ['top', 'left', 'right', 'bottom'];
+  const safeAreaEdges: Edge[] = ['top', 'left', 'right', 'bottom'];
 
   return (
     <SafeAreaView style={styles.container} edges={safeAreaEdges}>

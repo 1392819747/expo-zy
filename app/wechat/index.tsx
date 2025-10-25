@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
 import type { SectionList as SectionListType } from 'react-native';
 import {
   Alert,
@@ -20,6 +20,7 @@ import {
 import { Swipeable } from 'react-native-gesture-handler';
 import type { Edge } from 'react-native-safe-area-context';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import {
   Contact,
   contactFeatures,
@@ -28,7 +29,6 @@ import {
   mockContacts,
   searchContacts
 } from '../../models/contacts';
-import { useThemeColors } from '../../hooks/useThemeColors';
 
 type ChatItem = {
   id: string;
@@ -261,9 +261,9 @@ export default function WeChatScreen() {
           return false;
         }}
       >
-        <View style={[styles.chatsSearchContainer, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight }]}>
+        <View style={[styles.chatsSearchContainer, { backgroundColor: colors.backgroundTertiary, borderBottomColor: colors.borderLight }]}>
           <View style={[styles.chatsSearchInputContainer, { 
-            backgroundColor: colors.inputBackground, 
+            backgroundColor: colors.backgroundSecondary, 
             borderColor: colors.border,
             borderWidth: 1,
           }]}>
@@ -367,9 +367,9 @@ export default function WeChatScreen() {
           contentContainerStyle={[styles.contactsListContent, { backgroundColor: colors.backgroundSecondary }]}
           ListHeaderComponent={(
             <>
-              <View style={[styles.contactsSearchContainer, { backgroundColor: colors.backgroundSecondary }]}>
+              <View style={[styles.contactsSearchContainer, { backgroundColor: colors.backgroundTertiary }]}>
                 <View style={[styles.contactsSearchInput, { 
-                  backgroundColor: colors.inputBackground,
+                  backgroundColor: colors.backgroundSecondary,
                   borderColor: colors.border,
                   borderWidth: 1,
                 }]}>
@@ -495,7 +495,7 @@ export default function WeChatScreen() {
               // 通讯录页面显示添加好友按钮
               <TouchableOpacity style={styles.headerButton} onPress={() => {
                 closeAllSwipeables();
-                Alert.alert('添加好友', '添加好友功能待实现');
+                router.push('/wechat/contact-add' as any);
               }}>
                 <Ionicons name="person-add" size={24} color={colors.text} />
               </TouchableOpacity>
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 4,
     backgroundColor: '#07C160',
     justifyContent: 'center',
     alignItems: 'center',

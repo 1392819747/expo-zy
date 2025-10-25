@@ -228,6 +228,18 @@ export default function WeChatLayout() {
           presentation: 'card',
         }}
       />
+      <Stack.Screen
+        name="discover/moments"
+        options={{
+          headerShown: isIOS26OrAbove,
+          title: '朋友圈',
+          headerTransparent: false,
+          headerStyle: {
+            backgroundColor: colors.background, // 使用主题颜色
+          },
+          presentation: 'card',
+        }}
+      />
     </Stack>
   );
 }

@@ -108,6 +108,44 @@ export default function WeChatScreen() {
     }, [router, activeTab, isIOS26OrAbove])
   );
 
+  // 时间格式化函数
+  const formatTime = (timeString: string) => {
+    // 如果已经是特殊格式（如"昨天"、"星期三"等），则直接返回
+    if (['昨天', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'].includes(timeString)) {
+      return timeString;
+    }
+
+    // 尝试解析时间格式
+    const time = new Date(timeString);
+    if (isNaN(time.getTime())) {
+      // 如果无法解析，直接返回原始字符串
+      return timeString;
+    }
+
+    const now = new Date();
+    const diff = now.getTime() - time.getTime();
+    const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    // 如果是今天
+    if (diffDays === 0) {
+      return time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // 如果是昨天
+    if (diffDays === 1) {
+      return '昨天';
+    }
+    
+    // 如果是今年
+    if (time.getFullYear() === now.getFullYear()) {
+      // 显示月份和日期
+      return `${time.getMonth() + 1}月${time.getDate()}日`;
+    }
+    
+    // 如果是其他年份
+    return `${time.getFullYear()}年${time.getMonth() + 1}月${time.getDate()}日`;
+  };
+
   // 过滤和分组联系人
   const { groupedContacts, initials } = useMemo(() => {
     const filtered = searchContacts(mockContacts, contactsSearchQuery);
@@ -200,67 +238,110 @@ export default function WeChatScreen() {
   };
 
   const renderChats = () => {
-    const renderChatItem = ({ item }: { item: ChatItem }) => (
-      <Swipeable
-        ref={(ref) => {
-          if (ref) {
-            swipeableRefs.current[item.id] = ref;
-          }
-        }}
-        overshootRight={false}
-        renderRightActions={(progress, dragX) => renderRightActions(item, progress, dragX)}
-        onSwipeableOpen={() => {
-          // 关闭其他所有Swipeable
-          Object.keys(swipeableRefs.current).forEach(key => {
-            if (key !== item.id) {
-              swipeableRefs.current[key]?.close();
-            }
-          });
-        }}
-      >
-        <TouchableOpacity
-          style={[
-            styles.chatItem, 
-            { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight },
-            item.pinned && { backgroundColor: colors.backgroundTertiary }
-          ]}
-          onPress={() => {
-            // 点击聊天项时关闭所有Swipeable
-            closeAllSwipeables();
-            router.push(`/wechat/chat-detail?id=${item.id}` as any);
-          }}
-        >
-          <View style={[styles.avatar, { backgroundColor: colors.avatarBackground }]}>
-            <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
-          </View>
-          <View style={styles.chatInfo}>
-            <View style={styles.chatHeader}>
-              <Text style={[styles.chatName, { color: colors.text }]}>{item.name}</Text>
-              <View style={styles.chatHeaderRight}>
-                <Text style={[styles.chatTime, { color: colors.textTertiary }]}>{item.time}</Text>
-                {item.unread > 0 && (
-                  <View style={[styles.unreadBadge, { backgroundColor: colors.destructive }]}>
-                    <Text style={styles.unreadText}>{item.unread > 99 ? '99+' : item.unread}</Text>
-                  </View>
-                )}
-              </View>
+    const renderChatItem = ({ item }: { item: ChatItem }) => {
+      // 在安卓上不使用Swipeable，以解决滑动冲突
+      if (Platform.OS === 'android') {
+        return (
+          <TouchableOpacity
+            style={[
+              styles.chatItem, 
+              { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight },
+              item.pinned && { backgroundColor: colors.backgroundTertiary }
+            ]}
+            onPress={() => {
+              // 点击聊天项时关闭所有Swipeable
+              closeAllSwipeables();
+              router.push(`/wechat/chat-detail?id=${item.id}` as any);
+            }}
+          >
+            <View style={[styles.avatar, { backgroundColor: colors.avatarBackground }]}>
+              <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
             </View>
-            <Text style={[styles.chatMessage, { color: colors.textSecondary }]} numberOfLines={1}>
-              {item.message}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      </Swipeable>
-    );
+            <View style={styles.chatInfo}>
+              <View style={styles.chatHeader}>
+                <Text style={[styles.chatName, { color: colors.text }]}>{item.name}</Text>
+                <View style={styles.chatHeaderRight}>
+                  <Text style={[styles.chatTime, { color: colors.textTertiary }]}>{formatTime(item.time)}</Text>
+                  {item.unread > 0 && (
+                    <View style={[styles.unreadBadge, { backgroundColor: colors.destructive }]}>
+                      <Text style={styles.unreadText}>{item.unread > 99 ? '99+' : item.unread}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <Text style={[styles.chatMessage, { color: colors.textSecondary }]} numberOfLines={1}>
+                {item.message}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      } else {
+        // iOS 上继续使用 Swipeable
+        return (
+          <Swipeable
+            ref={(ref) => {
+              if (ref) {
+                swipeableRefs.current[item.id] = ref;
+              }
+            }}
+            overshootRight={false}
+            renderRightActions={(progress, dragX) => renderRightActions(item, progress, dragX)}
+            onSwipeableOpen={() => {
+              // 关闭其他所有Swipeable
+              Object.keys(swipeableRefs.current).forEach(key => {
+                if (key !== item.id) {
+                  swipeableRefs.current[key]?.close();
+                }
+              });
+            }}
+            // 配置滑动阈值来区分垂直滚动和水平滑动
+            friction={1}
+            leftThreshold={20}
+            rightThreshold={20}
+            // 设置垂直方向的失败阈值，使垂直滑动更容易传递给父组件
+            failOffsetY={[-10, 10]}  // 当垂直移动超过10px时，不触发Swipeable，而是传递给父级（FlatList）
+            activationOffset={20}
+            directionalDistanceChangeThreshold={2}
+          >
+            <TouchableOpacity
+              style={[
+                styles.chatItem, 
+                { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight },
+                item.pinned && { backgroundColor: colors.backgroundTertiary }
+              ]}
+              onPress={() => {
+                // 点击聊天项时关闭所有Swipeable
+                closeAllSwipeables();
+                router.push(`/wechat/chat-detail?id=${item.id}` as any);
+              }}
+            >
+              <View style={[styles.avatar, { backgroundColor: colors.avatarBackground }]}>
+                <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+              </View>
+              <View style={styles.chatInfo}>
+                <View style={styles.chatHeader}>
+                  <Text style={[styles.chatName, { color: colors.text }]}>{item.name}</Text>
+                  <View style={styles.chatHeaderRight}>
+                    <Text style={[styles.chatTime, { color: colors.textTertiary }]}>{formatTime(item.time)}</Text>
+                    {item.unread > 0 && (
+                      <View style={[styles.unreadBadge, { backgroundColor: colors.destructive }]}>
+                        <Text style={styles.unreadText}>{item.unread > 99 ? '99+' : item.unread}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <Text style={[styles.chatMessage, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {item.message}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </Swipeable>
+        );
+      }
+    };
 
     return (
-      <View style={[styles.chatsContainer, { backgroundColor: colors.backgroundSecondary }]} 
-        onStartShouldSetResponder={() => {
-          // 在容器上点击时关闭所有Swipeable
-          closeAllSwipeables();
-          return false;
-        }}
-      >
+      <View style={[styles.chatsContainer, { backgroundColor: colors.backgroundSecondary }]}>
         <View style={[styles.chatsSearchContainer, { backgroundColor: colors.backgroundTertiary, borderBottomColor: colors.borderLight }]}>
           <View style={[styles.chatsSearchInputContainer, { 
             backgroundColor: colors.backgroundSecondary, 
@@ -276,25 +357,36 @@ export default function WeChatScreen() {
               placeholderTextColor={colors.placeholder}
               underlineColorAndroid="transparent"
               onFocus={() => closeAllSwipeables()}
+              multiline={false}  // 确保TextInput不允许多行
             />
           </View>
         </View>
 
-        <View style={styles.chatsListContainer}>
-          {sortedChats.length > 0 ? (
-            <FlatList
-              data={sortedChats}
-              keyExtractor={(item) => item.id}
-              renderItem={renderChatItem}
-              contentContainerStyle={[styles.chatItemsContainer, { backgroundColor: colors.backgroundSecondary }]}
-              showsVerticalScrollIndicator={false}
-            />
-          ) : (
+        <FlatList
+          data={sortedChats}
+          keyExtractor={(item) => item.id}
+          renderItem={renderChatItem}
+          contentContainerStyle={[
+            styles.chatItemsContainer, 
+            { backgroundColor: colors.backgroundSecondary },
+            // 确保内容至少占满屏幕高度，以便能够滚动
+            sortedChats.length === 0 ? { flex: 1, justifyContent: 'center' } : { minHeight: '100%' }
+          ]}
+          showsVerticalScrollIndicator={false}
+          style={styles.chatsListContainer}
+          ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>没有找到相关聊天</Text>
             </View>
-          )}
-        </View>
+          }
+          scrollEnabled={true}
+          nestedScrollEnabled={false}  // 禁用嵌套滚动，因为Swipeables在其中
+          removeClippedSubviews={false}  // 防止在安卓上截断子视图
+          onScrollBeginDrag={() => closeAllSwipeables()}  // 开始滚动时关闭所有Swipeable
+          overScrollMode="never"  // 防止过度滚动效果
+          // 确保列表可以滚动，即使内容不够多
+          scrollEventThrottle={16}
+        />
       </View>
     );
   };
@@ -420,9 +512,112 @@ export default function WeChatScreen() {
   const renderDiscover = () => {
     return (
       <ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]}>
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>发现页面 - 待重新设计</Text>
-        </View>
+        {/* 发现页面功能项 */}
+        <TouchableOpacity 
+          style={[styles.meFeatureItem, { 
+            backgroundColor: colors.backgroundSecondary, 
+            borderBottomColor: colors.borderLight 
+          }]}
+          onPress={() => router.push('/wechat/discover/moments')}
+        >
+          <View style={[styles.meFeatureIcon, { backgroundColor: '#FFFAF0' }]}>
+            <Ionicons name="images" size={24} color="#F6AD55" />
+          </View>
+          <Text style={[styles.meFeatureTitle, { color: colors.text }]}>朋友圈</Text>
+          <View style={styles.meFeatureRight}>
+            <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.meFeatureItem, { 
+            backgroundColor: colors.backgroundSecondary, 
+            borderBottomColor: colors.borderLight 
+          }]}
+        >
+          <View style={[styles.meFeatureIcon, { backgroundColor: '#F0FFF4' }]}>
+            <Ionicons name="scan" size={24} color="#4FD1C7" />
+          </View>
+          <Text style={[styles.meFeatureTitle, { color: colors.text }]}>扫一扫</Text>
+          <View style={styles.meFeatureRight}>
+            <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.meFeatureItem, { 
+            backgroundColor: colors.backgroundSecondary, 
+            borderBottomColor: colors.borderLight 
+          }]}
+        >
+          <View style={[styles.meFeatureIcon, { backgroundColor: '#F3E8FF' }]}>
+            <Ionicons name="reload" size={24} color="#9F7AEA" />
+          </View>
+          <Text style={[styles.meFeatureTitle, { color: colors.text }]}>摇一摇</Text>
+          <View style={styles.meFeatureRight}>
+            <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.meFeatureItem, { 
+            backgroundColor: colors.backgroundSecondary, 
+            borderBottomColor: colors.borderLight 
+          }]}
+        >
+          <View style={[styles.meFeatureIcon, { backgroundColor: '#FEE7F0' }]}>
+            <Ionicons name="eye" size={24} color="#ED64A6" />
+          </View>
+          <Text style={[styles.meFeatureTitle, { color: colors.text }]}>看一看</Text>
+          <View style={styles.meFeatureRight}>
+            <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.meFeatureItem, { 
+            backgroundColor: colors.backgroundSecondary, 
+            borderBottomColor: colors.borderLight 
+          }]}
+        >
+          <View style={[styles.meFeatureIcon, { backgroundColor: '#EBF8FF' }]}>
+            <Ionicons name="search" size={24} color="#63B3ED" />
+          </View>
+          <Text style={[styles.meFeatureTitle, { color: colors.text }]}>搜一搜</Text>
+          <View style={styles.meFeatureRight}>
+            <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.meFeatureItem, { 
+            backgroundColor: colors.backgroundSecondary, 
+            borderBottomColor: colors.borderLight 
+          }]}
+        >
+          <View style={[styles.meFeatureIcon, { backgroundColor: '#F3E8FF' }]}>
+            <Ionicons name="game-controller" size={24} color="#805AD5" />
+          </View>
+          <Text style={[styles.meFeatureTitle, { color: colors.text }]}>游戏</Text>
+          <View style={styles.meFeatureRight}>
+            <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.meFeatureItem, { 
+            backgroundColor: colors.backgroundSecondary, 
+            borderBottomColor: colors.borderLight 
+          }]}
+        >
+          <View style={[styles.meFeatureIcon, { backgroundColor: '#F0FDFA' }]}>
+            <Ionicons name="apps" size={24} color="#38B2AC" />
+          </View>
+          <Text style={[styles.meFeatureTitle, { color: colors.text }]}>小程序</Text>
+          <View style={styles.meFeatureRight}>
+            <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+          </View>
+        </TouchableOpacity>
       </ScrollView>
     );
   };
@@ -431,8 +626,110 @@ export default function WeChatScreen() {
   const renderMe = () => {
     return (
       <ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]}>
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>个人页面 - 待重新设计</Text>
+        <View style={[styles.profileCard, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight }]}>
+          <TouchableOpacity style={styles.profileInfo}>
+            <View style={[styles.meAvatar, { backgroundColor: colors.avatarBackground }]}>
+              <Text style={styles.meAvatarText}>张</Text>
+            </View>
+            <View style={styles.userInfo}>
+              <View style={styles.userNameContainer}>
+                <Text style={[styles.meUserName, { color: colors.text }]}>张三</Text>
+                <Ionicons name="qr-code" size={20} color={colors.textTertiary} style={styles.qrCodeIcon} />
+              </View>
+              <Text style={[styles.userId, { color: colors.textSecondary }]}>微信号: zhangsan</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.rightArrow}>
+            <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* 功能列表 */}
+        <View style={[styles.meSection, { backgroundColor: colors.backgroundSecondary, marginTop: 12 }]}>
+          <TouchableOpacity 
+            style={[styles.meFeatureItem, { borderBottomColor: colors.borderLight }]}
+            onPress={() => router.push('/wechat/me/posts' as any)}
+          >
+            <View style={[styles.meFeatureIcon, { backgroundColor: '#EBF8FF' }]}>
+              <Ionicons name="images" size={24} color="#63B3ED" />
+            </View>
+            <Text style={[styles.meFeatureTitle, { color: colors.text }]}>朋友圈</Text>
+            <View style={styles.meFeatureRight}>
+              <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.meSection, { backgroundColor: colors.backgroundSecondary, marginTop: 12 }]}>
+          <TouchableOpacity 
+            style={[styles.meFeatureItem, { borderBottomColor: colors.borderLight }]}
+            onPress={() => router.push('/wechat/me/favorites' as any)}
+          >
+            <View style={[styles.meFeatureIcon, { backgroundColor: '#FFFAF0' }]}>
+              <Ionicons name="star" size={24} color="#F6AD55" />
+            </View>
+            <Text style={[styles.meFeatureTitle, { color: colors.text }]}>收藏</Text>
+            <View style={styles.meFeatureRight}>
+              <Text style={[styles.meFeatureRightText, { color: colors.textSecondary }]}>0个</Text>
+              <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.meFeatureItem, { borderBottomColor: colors.borderLight }]}
+            onPress={() => router.push('/wechat/me/albums' as any)}
+          >
+            <View style={[styles.meFeatureIcon, { backgroundColor: '#F0FFF4' }]}>
+              <Ionicons name="albums" size={24} color="#4FD1C7" />
+            </View>
+            <Text style={[styles.meFeatureTitle, { color: colors.text }]}>相册</Text>
+            <View style={styles.meFeatureRight}>
+              <Text style={[styles.meFeatureRightText, { color: colors.textSecondary }]}>0张</Text>
+              <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.meFeatureItem, { borderBottomColor: colors.borderLight }]}
+            onPress={() => router.push('/wechat/me/cards' as any)}
+          >
+            <View style={[styles.meFeatureIcon, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="card" size={24} color="#9F7AEA" />
+            </View>
+            <Text style={[styles.meFeatureTitle, { color: colors.text }]}>卡包</Text>
+            <View style={styles.meFeatureRight}>
+              <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.meFeatureItem, { borderBottomColor: colors.borderLight }]}
+            onPress={() => router.push('/wechat/me/emojis' as any)}
+          >
+            <View style={[styles.meFeatureIcon, { backgroundColor: '#FEE7F0' }]}>
+              <Ionicons name="happy" size={24} color="#ED64A6" />
+            </View>
+            <Text style={[styles.meFeatureTitle, { color: colors.text }]}>表情</Text>
+            <View style={styles.meFeatureRight}>
+              <Text style={[styles.meFeatureRightText, { color: colors.textSecondary }]}>0个</Text>
+              <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.meSection, { backgroundColor: colors.backgroundSecondary, marginTop: 12 }]}>
+          <TouchableOpacity 
+            style={[styles.meFeatureItem, { borderBottomColor: colors.borderLight }]}
+            onPress={() => router.push('/wechat/me/settings' as any)}
+          >
+            <View style={[styles.meFeatureIcon, { backgroundColor: '#F7FAFC' }]}>
+              <Ionicons name="settings" size={24} color="#A0AEC0" />
+            </View>
+            <Text style={[styles.meFeatureTitle, { color: colors.text }]}>设置</Text>
+            <View style={styles.meFeatureRight}>
+              <Ionicons name="chevron-forward" size={24} color={colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     );
@@ -792,13 +1089,13 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 4,
+    width: 50,
+    height: 50,
+    borderRadius: 8,
     backgroundColor: '#07C160',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   avatarText: {
     fontSize: 16,
@@ -827,39 +1124,40 @@ const styles = StyleSheet.create({
   // 聊天页面相关样式
   chatsContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    // 确保容器可以正确处理内部元素的高度
+    flexDirection: 'column',
   },
   chatsSearchContainer: {
-    backgroundColor: '#fff',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e5e5',
   },
   chatsSearchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
     borderRadius: 6,
     paddingHorizontal: 10,
     height: 36,
-  },
-  chatsSearchIcon: {
-    marginRight: 8,
   },
   chatsSearchInput: {
     flex: 1,
     fontSize: 16,
     color: '#333',
-    textAlignVertical: 'center',
-    textAlign: 'left',
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    paddingTop: 4,
-    paddingBottom: 0,
-    includeFontPadding: false,
-    height: 36,
-    lineHeight: 20,
+    padding: 0,  // 重置默认padding
+    margin: 0,   // 重置默认margin
+    textAlignVertical: 'center', // 垂直居中文字
+    includeFontPadding: false, // 防止字体padding影响布局
+    height: 36,  // 固定高度，防止出现滚动
+    maxHeight: 36, // 限制最大高度
+    ...Platform.select({
+      android: {
+        textAlignVertical: 'center', // 确保安卓上文字垂直居中
+        padding: 0,
+      },
+      ios: {
+        padding: 0,
+      }
+    })
   },
   chatsListContainer: {
     flex: 1,
@@ -890,7 +1188,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e5e5',
     backgroundColor: '#fff',
   },
   chatItemPinned: {
@@ -913,15 +1210,12 @@ const styles = StyleSheet.create({
   chatName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
   },
   chatTime: {
     fontSize: 12,
-    color: '#999',
   },
   chatMessage: {
     fontSize: 14,
-    color: '#999',
     marginTop: 2,
   },
   unreadBadge: {
@@ -958,5 +1252,86 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  
+  // "我"页面相关样式
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    borderBottomWidth: 0.5,
+  },
+  profileInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  meAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#07C160',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  meAvatarText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  meUserName: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  qrCodeIcon: {
+    marginLeft: 8,
+  },
+  userId: {
+    fontSize: 14,
+  },
+  rightArrow: {
+    paddingLeft: 16,
+  },
+  meSection: {
+    marginTop: 12,
+  },
+  meFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 0.5,
+  },
+  meFeatureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  meFeatureTitle: {
+    flex: 1,
+    fontSize: 16,
+  },
+  meFeatureRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  meFeatureRightText: {
+    fontSize: 14,
+    marginRight: 8,
   },
 });

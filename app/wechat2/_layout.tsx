@@ -1,32 +1,34 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors } from '../../hooks/useThemeColors';
 import { Text } from 'react-native';
+import { useWeChatTheme } from './useWeChatTheme';
+
+const WeChatTabLabel = ({ label, color }: { label: string; color: string }) => (
+  <Text style={{ fontSize: 12, marginTop: 2, color }}>{label}</Text>
+);
 
 export default function WeChat2Layout() {
-  const { colors } = useThemeColors();
-
-  const TabBarLabel = ({ label, color }: { label: string; color: string }) => (
-    <Text style={{ fontSize: 10, color, marginTop: -4 }}>{label}</Text>
-  );
+  const theme = useWeChatTheme();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.backgroundSecondary,
-          borderTopColor: colors.border,
+          backgroundColor: theme.bg1,
+          borderTopColor: theme.fillColor,
           borderTopWidth: 0.5,
+          height: 60,
+          paddingTop: 6,
         },
-        tabBarActiveTintColor: colors.primary || '#07C160',
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.text3,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          tabBarLabel: ({ color }) => <TabBarLabel label="微信" color={color} />,
+          tabBarLabel: ({ color }) => <WeChatTabLabel label="微信" color={color} />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
@@ -35,7 +37,7 @@ export default function WeChat2Layout() {
       <Tabs.Screen
         name="contacts"
         options={{
-          tabBarLabel: ({ color }) => <TabBarLabel label="通讯录" color={color} />,
+          tabBarLabel: ({ color }) => <WeChatTabLabel label="通讯录" color={color} />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people" size={size} color={color} />
           ),
@@ -44,7 +46,7 @@ export default function WeChat2Layout() {
       <Tabs.Screen
         name="discover"
         options={{
-          tabBarLabel: ({ color }) => <TabBarLabel label="发现" color={color} />,
+          tabBarLabel: ({ color }) => <WeChatTabLabel label="发现" color={color} />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="compass" size={size} color={color} />
           ),
@@ -53,7 +55,7 @@ export default function WeChat2Layout() {
       <Tabs.Screen
         name="me"
         options={{
-          tabBarLabel: ({ color }) => <TabBarLabel label="我" color={color} />,
+          tabBarLabel: ({ color }) => <WeChatTabLabel label="我" color={color} />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

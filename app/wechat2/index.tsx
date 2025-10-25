@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,27 @@ import {
   SafeAreaView,
   TouchableOpacity,
   FlatList,
-  TextInput,
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useThemeColors } from '../../hooks/useThemeColors';
+import { useWeChatTheme } from './useWeChatTheme';
 
-const CHAT_LIST = [
+type ChatItem = {
+  id: string;
+  name: string;
+  message: string;
+  time: string;
+  unread: number;
+  avatar: any;
+  isGroup?: boolean;
+};
+
+const MOCK_CHATS: ChatItem[] = [
   {
     id: '1',
     name: '文件传输助手',
-    message: '可以在这里发送文件给自己',
+    message: '[文件]',
     time: '上午 9:15',
     unread: 0,
     avatar: require('../../assets/images/wechat/avatar-assistant.png'),
@@ -46,44 +55,47 @@ const CHAT_LIST = [
     unread: 1,
     avatar: require('../../assets/images/wechat/avatar-wechat.png'),
   },
+  {
+    id: '5',
+    name: '产品设计群',
+    message: '李明: 今天的设计稿已发送',
+    time: '星期一',
+    unread: 0,
+    avatar: require('../../assets/images/wechat/avatar-man.png'),
+    isGroup: true,
+  },
 ];
 
 export default function WeChat2ChatsScreen() {
-  const { colors } = useThemeColors();
+  const theme = useWeChatTheme();
   const router = useRouter();
 
-  const headerStyle = useMemo(
-    () => ({
-      backgroundColor: colors.background,
-      borderBottomColor: colors.border,
-    }),
-    [colors.background, colors.border]
-  );
-
-  const renderItem = ({ item }: { item: (typeof CHAT_LIST)[number] }) => {
+  const renderChatItem = ({ item }: { item: ChatItem }) => {
     return (
       <TouchableOpacity
-        style={[styles.chatItem, { borderBottomColor: colors.border }]}
+        style={[styles.chatItem, { backgroundColor: theme.bg1 }]}
         activeOpacity={0.8}
         onPress={() => router.push(`/wechat2/chats/${item.id}?name=${encodeURIComponent(item.name)}`)}
       >
-        <Image source={item.avatar} style={styles.chatAvatar} />
+        <Image source={item.avatar} style={[styles.avatar, item.isGroup && styles.groupAvatar]} />
+        
         <View style={styles.chatContent}>
           <View style={styles.chatHeader}>
-            <Text style={[styles.chatName, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[styles.chatName, { color: theme.text5 }]} numberOfLines={1}>
               {item.name}
             </Text>
-            <Text style={[styles.chatTime, { color: colors.textSecondary }]}>{item.time}</Text>
+            <Text style={[styles.chatTime, { color: theme.text3 }]}>{item.time}</Text>
           </View>
+          
           <View style={styles.chatFooter}>
-            <Text style={[styles.chatMessage, { color: colors.textSecondary }]} numberOfLines={1}>
+            <Text style={[styles.chatMessage, { color: theme.text3 }]} numberOfLines={1}>
               {item.message}
             </Text>
-            {item.unread > 0 ? (
-              <View style={styles.unreadBadge}>
+            {item.unread > 0 && (
+              <View style={[styles.unreadBadge, { backgroundColor: theme.danger5 }]}>
                 <Text style={styles.unreadText}>{item.unread}</Text>
               </View>
-            ) : null}
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -91,33 +103,28 @@ export default function WeChat2ChatsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, headerStyle]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>WeChat 2</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg2 }]} edges={['top']}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: theme.bg2 }]}>
+        <Text style={[styles.headerTitle, { color: theme.text5 }]}>微信</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="search" size={20} color={colors.text} />
+            <Ionicons name="search" size={22} color={theme.text5} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="add" size={24} color={colors.text} />
+            <Ionicons name="add-circle-outline" size={22} color={theme.text5} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={[styles.searchBar, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
-        <Ionicons name="search" size={18} color={colors.textSecondary} />
-        <TextInput
-          placeholder="搜索"
-          placeholderTextColor={colors.textSecondary}
-          style={[styles.searchInput, { color: colors.text }]}
-        />
-      </View>
-
+      {/* Chat List */}
       <FlatList
-        data={CHAT_LIST}
+        data={MOCK_CHATS}
         keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
+        renderItem={renderChatItem}
+        ItemSeparatorComponent={() => (
+          <View style={[styles.separator, { backgroundColor: theme.fillColor }]} />
+        )}
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
@@ -133,67 +140,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   headerButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
+    width: 30,
+    height: 30,
     justifyContent: 'center',
-  },
-  searchBar: {
-    flexDirection: 'row',
     alignItems: 'center',
-    margin: 16,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 36,
-  },
-  listContent: {
-    paddingBottom: 16,
   },
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
+    paddingHorizontal: 16,
   },
-  chatAvatar: {
+  avatar: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  groupAvatar: {
+    borderRadius: 8,
   },
   chatContent: {
     flex: 1,
-    gap: 6,
   },
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 4,
   },
   chatName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '400',
     flex: 1,
     marginRight: 12,
   },
@@ -204,17 +194,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
   },
   chatMessage: {
-    flex: 1,
     fontSize: 14,
+    flex: 1,
+    marginRight: 12,
   },
   unreadBadge: {
-    backgroundColor: '#FF3B30',
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
@@ -222,6 +211,10 @@ const styles = StyleSheet.create({
   unreadText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  separator: {
+    height: 0.5,
+    marginLeft: 78,
   },
 });

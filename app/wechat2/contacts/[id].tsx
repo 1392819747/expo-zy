@@ -10,16 +10,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useThemeColors } from '../../../hooks/useThemeColors';
+import { useWeChatTheme } from '../useWeChatTheme';
 
-const CONTACTS = {
+const CONTACTS_DATA = {
   '1': {
     name: 'Alice',
     avatar: require('../../../assets/images/wechat/avatar-girl.png'),
     wechatId: 'alice_2024',
     region: '美国 · 纽约',
     description: '设计是一种生活方式',
-    moments: ['刚完成一个新的UI设计稿', '周末逛了现代艺术博物馆'],
   },
   '2': {
     name: '李明',
@@ -27,7 +26,6 @@ const CONTACTS = {
     wechatId: 'liming_work',
     region: '中国 · 上海',
     description: '开发者·咖啡迷',
-    moments: ['新的React Native项目上线了', '今天的咖啡是肯尼亚AA'],
   },
   '3': {
     name: '王华',
@@ -35,7 +33,6 @@ const CONTACTS = {
     wechatId: 'wanghua',
     region: '中国 · 深圳',
     description: '产品经理·跑步爱好者',
-    moments: ['成功上线了新的产品版本', '早起跑步5公里'],
   },
   '4': {
     name: '张伟',
@@ -43,7 +40,6 @@ const CONTACTS = {
     wechatId: 'zhangwei1990',
     region: '中国 · 北京',
     description: '摄影师',
-    moments: ['拍了一组城市夜景', '准备下次旅拍行程'],
   },
   '5': {
     name: '赵静',
@@ -51,62 +47,62 @@ const CONTACTS = {
     wechatId: 'zhaojing',
     region: '中国 · 成都',
     description: '美食·旅行爱好者',
-    moments: ['探店了一家超好吃的火锅', '规划下一次旅行目的地'],
   },
 };
 
 export default function ContactDetailScreen() {
   const router = useRouter();
-  const { colors } = useThemeColors();
+  const theme = useWeChatTheme();
   const params = useLocalSearchParams();
-  const id = params.id as keyof typeof CONTACTS;
-  const contact = CONTACTS[id] ?? CONTACTS['1'];
+  const id = params.id as keyof typeof CONTACTS_DATA;
+  const contact = CONTACTS_DATA[id] ?? CONTACTS_DATA['1'];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg2 }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={[styles.header, { backgroundColor: colors.background }]}> 
+        <View style={[styles.header, { backgroundColor: theme.bg1 }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={theme.text5} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{contact.name}</Text>
-          <View style={styles.headerPlaceholder} />
+          <TouchableOpacity style={styles.moreButton}>
+            <Ionicons name="ellipsis-horizontal" size={24} color={theme.text5} />
+          </TouchableOpacity>
         </View>
 
-        <View style={[styles.profileCard, { backgroundColor: colors.background }]}> 
+        <View style={[styles.profileSection, { backgroundColor: theme.bg1 }]}>
           <Image source={contact.avatar} style={styles.avatar} />
-          <View style={styles.profileInfo}>
-            <Text style={[styles.name, { color: colors.text }]}>{contact.name}</Text>
-            <Text style={[styles.wechatId, { color: colors.textSecondary }]}>微信号：{contact.wechatId}</Text>
-            <View style={styles.profileMeta}>
-              <Ionicons name="location-outline" size={16} color={colors.textSecondary} />
-              <Text style={[styles.region, { color: colors.textSecondary }]}>{contact.region}</Text>
-            </View>
-            <Text style={[styles.description, { color: colors.textSecondary }]}>{contact.description}</Text>
+          <Text style={[styles.name, { color: theme.text5 }]}>{contact.name}</Text>
+          <Text style={[styles.description, { color: theme.text3 }]}>{contact.description}</Text>
+        </View>
+
+        <View style={[styles.infoSection, { backgroundColor: theme.bg1 }]}>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: theme.text3 }]}>微信号</Text>
+            <Text style={[styles.infoValue, { color: theme.text5 }]}>{contact.wechatId}</Text>
+          </View>
+          <View style={[styles.separator, { backgroundColor: theme.fillColor }]} />
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: theme.text3 }]}>地区</Text>
+            <Text style={[styles.infoValue, { color: theme.text5 }]}>{contact.region}</Text>
           </View>
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.background }]}> 
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>朋友圈</Text>
-          {contact.moments.map((moment, index) => (
-            <View key={index} style={styles.momentItem}>
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.textSecondary} />
-              <Text style={[styles.momentText, { color: colors.text }]}>{moment}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={[styles.actionSection, { backgroundColor: colors.background }]}> 
+        <View style={[styles.actionSection, { backgroundColor: theme.bg1 }]}>
           <TouchableOpacity
-            style={[styles.actionButton, { borderBottomColor: colors.border }]}
+            style={styles.actionButton}
             onPress={() => router.push(`/wechat2/chats/${id}?name=${encodeURIComponent(contact.name)}`)}
           >
-            <Ionicons name="chatbubbles-outline" size={20} color={colors.primary || '#07C160'} />
-            <Text style={[styles.actionText, { color: colors.text }]}>发消息</Text>
+            <View style={styles.actionButtonContent}>
+              <Ionicons name="chatbubbles-outline" size={22} color={theme.text5} />
+              <Text style={[styles.actionButtonText, { color: theme.text5 }]}>发消息</Text>
+            </View>
           </TouchableOpacity>
+          <View style={[styles.separator, { backgroundColor: theme.fillColor }]} />
           <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="videocam-outline" size={20} color={colors.primary || '#07C160'} />
-            <Text style={[styles.actionText, { color: colors.text }]}>音视频通话</Text>
+            <View style={styles.actionButtonContent}>
+              <Ionicons name="videocam-outline" size={22} color={theme.text5} />
+              <Text style={[styles.actionButtonText, { color: theme.text5 }]}>音视频通话</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -122,88 +118,72 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    alignItems: 'flex-start',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  headerPlaceholder: {
+  moreButton: {
     width: 40,
     height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
-  profileCard: {
-    flexDirection: 'row',
-    padding: 16,
+  profileSection: {
+    alignItems: 'center',
+    paddingVertical: 32,
     marginBottom: 12,
   },
   avatar: {
-    width: 70,
-    height: 70,
+    width: 80,
+    height: 80,
     borderRadius: 8,
-    marginRight: 16,
-  },
-  profileInfo: {
-    flex: 1,
-    gap: 6,
+    marginBottom: 16,
   },
   name: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
-  },
-  wechatId: {
-    fontSize: 14,
-  },
-  profileMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  region: {
-    fontSize: 14,
+    marginBottom: 8,
   },
   description: {
     fontSize: 14,
-    marginTop: 6,
   },
-  section: {
-    padding: 16,
+  infoSection: {
     marginBottom: 12,
-    gap: 12,
   },
-  sectionTitle: {
-    fontSize: 12,
-    letterSpacing: 1,
-  },
-  momentItem: {
+  infoRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  momentText: {
-    fontSize: 14,
+  infoLabel: {
+    fontSize: 16,
+  },
+  infoValue: {
+    fontSize: 16,
+  },
+  separator: {
+    height: 0.5,
+    marginLeft: 16,
   },
   actionSection: {
-    padding: 16,
     marginBottom: 24,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#eee',
   },
   actionButton: {
+    paddingVertical: 14,
+  },
+  actionButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  actionText: {
+  actionButtonText: {
     fontSize: 16,
   },
 });

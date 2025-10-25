@@ -5,78 +5,63 @@ import {
   SafeAreaView,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors } from '../../hooks/useThemeColors';
+import { useWeChatTheme } from './useWeChatTheme';
 
-const DISCOVER_ITEMS = [
-  {
-    id: 'moments',
-    title: '朋友圈',
-    icon: require('../../assets/images/wechat/avatar-girl.png'),
-    iconType: 'image' as const,
-  },
-  {
-    id: 'scan',
-    title: '扫一扫',
-    icon: 'scan-outline',
-    iconType: 'icon' as const,
-  },
-  {
-    id: 'shake',
-    title: '摇一摇',
-    icon: 'radio-outline',
-    iconType: 'icon' as const,
-  },
-  {
-    id: 'nearby',
-    title: '附近的人',
-    icon: 'location-outline',
-    iconType: 'icon' as const,
-  },
-  {
-    id: 'shopping',
-    title: '购物',
-    icon: 'bag-handle-outline',
-    iconType: 'icon' as const,
-  },
-  {
-    id: 'game',
-    title: '游戏',
-    icon: 'game-controller-outline',
-    iconType: 'icon' as const,
-  },
+type DiscoverItem = {
+  id: string;
+  title: string;
+  icon: string;
+  color: string;
+};
+
+const DISCOVER_ITEMS: DiscoverItem[] = [
+  { id: 'moments', title: '朋友圈', icon: 'camera-outline', color: '#628CFC' },
+  { id: 'channels', title: '视频号', icon: 'videocam-outline', color: '#FD9B39' },
+  { id: 'live', title: '直播', icon: 'tv-outline', color: '#FD5B3F' },
+  { id: 'scan', title: '扫一扫', icon: 'scan-outline', color: '#628CFC' },
+  { id: 'shake', title: '摇一摇', icon: 'phone-portrait-outline', color: '#628CFC' },
+  { id: 'nearby', title: '看一看', icon: 'eye-outline', color: '#628CFC' },
+  { id: 'search', title: '搜一搜', icon: 'search-outline', color: '#FD9B39' },
+  { id: 'shopping', title: '购物', icon: 'cart-outline', color: '#FD5B3F' },
+  { id: 'game', title: '游戏', icon: 'game-controller-outline', color: '#628CFC' },
 ];
 
 export default function WeChat2DiscoverScreen() {
-  const { colors } = useThemeColors();
+  const theme = useWeChatTheme();
+
+  const renderGroup = (items: DiscoverItem[]) => (
+    <View style={[styles.group, { backgroundColor: theme.bg1 }]}>
+      {items.map((item, index) => (
+        <React.Fragment key={item.id}>
+          <TouchableOpacity style={styles.item} activeOpacity={0.8}>
+            <View style={styles.itemLeft}>
+              <Ionicons name={item.icon as any} size={22} color={item.color} />
+              <Text style={[styles.itemTitle, { color: theme.text5 }]}>{item.title}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.text3} />
+          </TouchableOpacity>
+          {index < items.length - 1 && (
+            <View style={[styles.separator, { backgroundColor: theme.fillColor }]} />
+          )}
+        </React.Fragment>
+      ))}
+    </View>
+  );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>发现</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg2 }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: theme.bg2 }]}>
+        <Text style={[styles.headerTitle, { color: theme.text5 }]}>发现</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {DISCOVER_ITEMS.map(item => (
-          <TouchableOpacity
-            key={item.id}
-            style={[styles.item, { borderBottomColor: colors.border }]}
-            activeOpacity={0.7}
-          >
-            {item.iconType === 'image' ? (
-              <Image source={item.icon as any} style={styles.itemImage} />
-            ) : (
-              <View style={[styles.itemIconContainer, { backgroundColor: colors.backgroundSecondary }]}>
-                <Ionicons name={item.icon as any} size={22} color={colors.primary || '#07C160'} />
-              </View>
-            )}
-            <Text style={[styles.itemTitle, { color: colors.text }]}>{item.title}</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        ))}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {renderGroup(DISCOVER_ITEMS.slice(0, 2))}
+        {renderGroup(DISCOVER_ITEMS.slice(2, 5))}
+        {renderGroup(DISCOVER_ITEMS.slice(5, 7))}
+        {renderGroup(DISCOVER_ITEMS.slice(7))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -88,39 +73,32 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
   },
-  content: {
-    paddingVertical: 12,
+  group: {
+    marginTop: 12,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 14,
   },
-  itemImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 6,
-  },
-  itemIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  itemLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 16,
   },
   itemTitle: {
-    flex: 1,
     fontSize: 16,
+  },
+  separator: {
+    height: 0.5,
+    marginLeft: 54,
   },
 });

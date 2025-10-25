@@ -11,16 +11,35 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useThemeColors } from '../../hooks/useThemeColors';
+import { useWeChatTheme } from './useWeChatTheme';
 
-const QUICK_ACTIONS = [
-  { id: 'new-friends', name: '新的朋友', icon: 'person-add', color: '#FF9500' },
-  { id: 'group-chats', name: '群聊', icon: 'people', color: '#07C160' },
-  { id: 'tags', name: '标签', icon: 'pricetag', color: '#1296DB' },
-  { id: 'official', name: '公众号', icon: 'newspaper', color: '#0088FF' },
+type QuickAction = {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+};
+
+type ContactInfo = {
+  id: string;
+  name: string;
+  pinyin: string;
+  avatar: any;
+};
+
+type ContactSection = {
+  title: string;
+  data: ContactInfo[];
+};
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { id: 'new-friends', name: '新的朋友', icon: 'person-add-outline', color: '#F8D74A' },
+  { id: 'group-chats', name: '群聊', icon: 'people-outline', color: '#57BE6A' },
+  { id: 'tags', name: '标签', icon: 'pricetag-outline', color: '#628CFC' },
+  { id: 'official', name: '公众号', icon: 'newspaper-outline', color: '#FB7675' },
 ];
 
-const CONTACTS = [
+const CONTACT_SECTIONS: ContactSection[] = [
   {
     title: 'A',
     data: [
@@ -49,56 +68,51 @@ const CONTACTS = [
 ];
 
 export default function WeChat2ContactsScreen() {
-  const { colors } = useThemeColors();
+  const theme = useWeChatTheme();
   const router = useRouter();
 
-  const renderQuickAction = ({ item }: { item: (typeof QUICK_ACTIONS)[number] }) => {
-    return (
-      <TouchableOpacity style={[styles.quickAction, { borderBottomColor: colors.border }]}>
-        <View style={[styles.quickActionIcon, { backgroundColor: item.color }]}>
-          <Ionicons name={item.icon as any} size={24} color="#fff" />
-        </View>
-        <Text style={[styles.quickActionText, { color: colors.text }]}>{item.name}</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderContact = ({ item }: { item: any }) => {
-    return (
-      <TouchableOpacity
-        style={[styles.contactItem, { borderBottomColor: colors.border }]}
-        onPress={() => router.push(`/wechat2/contacts/${item.id}`)}
-      >
-        <Image source={item.avatar} style={styles.contactAvatar} />
-        <Text style={[styles.contactName, { color: colors.text }]}>{item.name}</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderSectionHeader = ({ section }: { section: any }) => {
-    return (
-      <View style={[styles.sectionHeader, { backgroundColor: colors.backgroundSecondary }]}>
-        <Text style={[styles.sectionHeaderText, { color: colors.textSecondary }]}>{section.title}</Text>
+  const renderQuickAction = ({ item }: { item: QuickAction }) => (
+    <TouchableOpacity style={[styles.quickAction, { backgroundColor: theme.bg1 }]}>
+      <View style={[styles.quickActionIcon, { backgroundColor: item.color }]}>
+        <Ionicons name={item.icon as any} size={22} color="#fff" />
       </View>
-    );
-  };
+      <Text style={[styles.quickActionText, { color: theme.text5 }]}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderContact = ({ item }: { item: ContactInfo }) => (
+    <TouchableOpacity
+      style={[styles.contactItem, { backgroundColor: theme.bg1 }]}
+      onPress={() => router.push(`/wechat2/contacts/${item.id}`)}
+      activeOpacity={0.8}
+    >
+      <Image source={item.avatar} style={styles.contactAvatar} />
+      <Text style={[styles.contactName, { color: theme.text5 }]}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderSectionHeader = ({ section }: { section: ContactSection }) => (
+    <View style={[styles.sectionHeader, { backgroundColor: theme.bg2 }]}> 
+      <Text style={[styles.sectionHeaderText, { color: theme.text3 }]}>{section.title}</Text>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>通讯录</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg2 }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: theme.bg2 }]}> 
+        <Text style={[styles.headerTitle, { color: theme.text5 }]}>通讯录</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="search" size={20} color={colors.text} />
+            <Ionicons name="person-add-outline" size={22} color={theme.text5} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="person-add" size={20} color={colors.text} />
+            <Ionicons name="add-circle-outline" size={22} color={theme.text5} />
           </TouchableOpacity>
         </View>
       </View>
 
       <SectionList
-        sections={CONTACTS}
+        sections={CONTACT_SECTIONS}
         keyExtractor={item => item.id}
         renderItem={renderContact}
         renderSectionHeader={renderSectionHeader}
@@ -108,9 +122,16 @@ export default function WeChat2ContactsScreen() {
             keyExtractor={item => item.id}
             renderItem={renderQuickAction}
             scrollEnabled={false}
+            ItemSeparatorComponent={() => (
+              <View style={[styles.quickActionSeparator, { backgroundColor: theme.fillColor }]} />
+            )}
           />
         }
         showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={({ leadingItem }) => (
+          <View style={[styles.contactSeparator, { backgroundColor: theme.fillColor }]} />
+        )}
+        stickySectionHeadersEnabled
       />
     </SafeAreaView>
   );
@@ -125,43 +146,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 8,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   headerButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
+    width: 30,
+    height: 30,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   quickAction: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
   },
   quickActionIcon: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   quickActionText: {
     fontSize: 16,
+  },
+  quickActionSeparator: {
+    height: 0.5,
+    marginLeft: 64,
   },
   sectionHeader: {
     paddingHorizontal: 16,
@@ -175,16 +196,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
+    paddingVertical: 12,
   },
   contactAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 4,
+    marginRight: 12,
   },
   contactName: {
     fontSize: 16,
+  },
+  contactSeparator: {
+    height: 0.5,
+    marginLeft: 68,
   },
 });

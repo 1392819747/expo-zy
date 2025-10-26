@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useLayoutEffect, useRouter } from 'expo-router';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
@@ -10,7 +11,7 @@ export default function DiscoverScreen() {
   const navigation = useNavigation();
   const router = useRouter();
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     navigation.setOptions({
       title: '发现',
       headerStyle: {
@@ -138,9 +139,11 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5', // 微信风格的浅灰色背景
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#f5f5f5', // 与容器背景一致
   },
   featureItem: {
     flexDirection: 'row',
@@ -148,6 +151,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 0.5,
+    backgroundColor: '#ffffff', // 功能项保持白色背景
+    // 添加微妙的阴影效果
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
   featureIcon: {
     width: 40,
@@ -156,10 +166,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    // 添加微妙的阴影效果
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   featureTitle: {
     flex: 1,
     fontSize: 16,
+    fontWeight: '500', // 更粗的字体
+    color: '#333', // 明确指定颜色
   },
   featureRight: {
     flexDirection: 'row',
@@ -168,5 +186,6 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 12,
+    backgroundColor: '#f5f5f5', // 与整体背景一致
   },
 });

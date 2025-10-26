@@ -1,19 +1,17 @@
-import React, { useState, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  Platform,
-  TextInput,
-  Alert
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Contact, mockContacts, groupContactsByInitial, getAllInitials, searchContacts } from '../../models/contacts';
+import { useMemo, useState } from 'react';
+import {
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { Contact, getAllInitials, groupContactsByInitial, mockContacts, searchContacts } from '../../models/contacts';
 
 const ContactListScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -140,10 +138,10 @@ const ContactListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5', // 微信风格的浅灰色背景
   },
   searchContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5', // 与容器背景一致
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 0.5,
@@ -152,10 +150,12 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff', // 搜索框保持白色
     borderRadius: 6,
     paddingHorizontal: 10,
     height: 36,
+    borderWidth: 1,
+    borderColor: '#e5e5e5', // 添加边框
   },
   searchIcon: {
     marginRight: 8,
@@ -164,24 +164,31 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+    padding: 0,
+    marginLeft: 8,
   },
   listContainer: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: '#f5f5f5', // 与整体背景一致
   },
   flatList: {
     flex: 1,
     paddingRight: 20,
+    backgroundColor: '#f5f5f5', // 与整体背景一致
   },
   sectionHeader: {
     backgroundColor: '#f5f5f5',
     paddingHorizontal: 16,
     paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e5e5', // 添加分隔线
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#666',
+    textTransform: 'uppercase', // 字母索引大写显示
   },
   contactItem: {
     flexDirection: 'row',
@@ -190,6 +197,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: '#e5e5e5',
+    backgroundColor: '#ffffff', // 联系人项保持白色背景
+    // 添加微妙的阴影效果
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
   avatar: {
     width: 40,
@@ -199,6 +213,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    // 添加微妙的阴影效果
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   avatarText: {
     fontSize: 16,
@@ -212,6 +232,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
+    marginBottom: 2, // 为描述留出空间
   },
   contactDescription: {
     fontSize: 12,
@@ -223,30 +244,34 @@ const styles = StyleSheet.create({
   },
   alphabetIndex: {
     position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
+    right: 8,
+    top: '50%',
+    transform: [{ translateY: -100 }],
     justifyContent: 'center',
     alignItems: 'center',
     width: 20,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)', // 半透明背景
+    borderRadius: 10,
   },
   alphabetItem: {
     paddingVertical: 2,
+    paddingHorizontal: 4, // 增加水平内边距
   },
   alphabetText: {
     fontSize: 12,
     color: '#07C160',
-    fontWeight: '500',
+    fontWeight: '600', // 更粗的字体
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f5f5f5', // 与整体背景一致
   },
   emptyText: {
     fontSize: 16,
     color: '#999',
+    textAlign: 'center',
   },
 });
 

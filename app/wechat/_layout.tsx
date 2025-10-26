@@ -4,6 +4,42 @@ import { useState } from 'react';
 import { Platform, Text, TouchableOpacity } from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
+// 自定义 HeaderRight 组件
+const HeaderRight = () => {
+  const router = useRouter();
+  const { colors } = useThemeColors();
+  
+  // 从路由参数中获取ID信息
+  const searchParams = useLocalSearchParams();
+  const id = searchParams.id;
+  const contactId = searchParams.contactId;
+  
+  // 确定要使用的ID
+  let chatId = '';
+  if (contactId) {
+    chatId = Array.isArray(contactId) ? contactId[0] : contactId;
+  } else if (id) {
+    chatId = Array.isArray(id) ? id[0] : id;
+  }
+  
+  // 判断是否是联系人聊天（排除特殊聊天）
+  // 检查是否是有效的联系人ID（数字ID）
+  const isContactChat = chatId && !isNaN(Number(chatId)) && chatId !== 'assistant' && chatId !== 'group' && chatId !== 'notifications';
+  
+  if (isContactChat) {
+    return (
+      <TouchableOpacity
+        onPress={() => router.push(`/wechat/contact-detail?id=${chatId}`)}
+        style={{ paddingRight: 16 }}
+      >
+        <Text style={{ fontSize: 16, color: colors.primary, fontWeight: '600' }}>编辑</Text>
+      </TouchableOpacity>
+    );
+  }
+  
+  return null;
+};
+
 export default function WeChatLayout() {
   const router = useRouter();
   const params = useGlobalSearchParams();
@@ -148,40 +184,7 @@ export default function WeChatLayout() {
           },
           presentation: 'card',
           // 动态设置标题和右侧按钮
-          headerRight: () => {
-            const { id, contactId, contactName } = useLocalSearchParams<{ 
-              id?: string | string[], 
-              contactId?: string | string[],
-              contactName?: string | string[]
-            }>();
-            
-            const router = useRouter();
-            
-            // 确定要使用的ID
-            let chatId = '';
-            if (contactId) {
-              chatId = Array.isArray(contactId) ? contactId[0] : contactId;
-            } else if (id) {
-              chatId = Array.isArray(id) ? id[0] : id;
-            }
-            
-            // 判断是否是联系人聊天（排除特殊聊天）
-            // 检查是否是有效的联系人ID（数字ID）
-            const isContactChat = chatId && !isNaN(Number(chatId)) && chatId !== 'assistant' && chatId !== 'group' && chatId !== 'notifications';
-            
-            if (isContactChat) {
-              return (
-                <TouchableOpacity
-                  onPress={() => router.push(`/wechat/contact-detail?id=${chatId}`)}
-                  style={{ paddingRight: 16 }}
-                >
-                  <Text style={{ fontSize: 16, color: colors.primary, fontWeight: '600' }}>编辑</Text>
-                </TouchableOpacity>
-              );
-            }
-            
-            return null;
-          },
+          headerRight: HeaderRight,
         }}
       />
       <Stack.Screen

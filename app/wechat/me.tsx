@@ -1,18 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  Pressable,
   View,
 } from 'react-native';
 import type { Edge } from 'react-native-safe-area-context';
@@ -367,19 +367,20 @@ export default function MeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ededed',
+    backgroundColor: '#f5f5f5', // 微信风格的浅灰色背景
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#f5f5f5', // 与容器背景一致
   },
   header: {
-    backgroundColor: '#ededed',
+    backgroundColor: '#f5f5f5', // 与容器背景一致
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#d9d9d9',
+    borderBottomColor: '#e5e5e5', // 更深的分隔线颜色
     position: 'relative',
   },
   headerCenter: {
@@ -401,6 +402,13 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#ffffff',
     borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e5e5', // 添加分隔线
+    // 添加微妙的阴影效果
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
   profileInfo: {
     flex: 1,
@@ -415,6 +423,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    // 添加微妙的阴影效果
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   avatarText: {
     fontSize: 20,
@@ -517,7 +531,7 @@ const styles = StyleSheet.create({
   // 功能列表样式
   section: {
     marginTop: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f5f5f5', // 与整体背景一致
   },
   featureItem: {
     flexDirection: 'row',
@@ -525,6 +539,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 0.5,
+    backgroundColor: '#ffffff', // 功能项保持白色背景
+    borderBottomColor: '#e5e5e5', // 更深的分隔线颜色
+    // 添加微妙的阴影效果
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
   featureIcon: {
     width: 40,
@@ -533,11 +555,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    // 添加微妙的阴影效果
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   featureTitle: {
     flex: 1,
     fontSize: 16,
     color: '#333',
+    fontWeight: '500', // 更粗的字体
   },
   featureRight: {
     flexDirection: 'row',

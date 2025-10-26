@@ -300,8 +300,6 @@ export default function WeChatScreen() {
             rightThreshold={20}
             // 设置垂直方向的失败阈值，使垂直滑动更容易传递给父组件
             failOffsetY={[-10, 10]}  // 当垂直移动超过10px时，不触发Swipeable，而是传递给父级（FlatList）
-            activationOffset={20}
-            directionalDistanceChangeThreshold={2}
           >
             <TouchableOpacity
               style={[
@@ -341,14 +339,14 @@ export default function WeChatScreen() {
     };
 
     return (
-      <View style={[styles.chatsContainer, { backgroundColor: colors.backgroundSecondary }]}>
-        <View style={[styles.chatsSearchContainer, { backgroundColor: colors.backgroundTertiary, borderBottomColor: colors.borderLight }]}>
-          <View style={[styles.chatsSearchInputContainer, { 
-            backgroundColor: colors.backgroundSecondary, 
-            borderColor: colors.border,
+      <View style={[styles.chatsContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.chatsSearchContainer, { backgroundColor: colors.background, borderBottomColor: colors.borderLight }]}>
+          <View style={[styles.chatsSearchInputContainer, {
+            backgroundColor: colors.backgroundSecondary,
+            borderColor: colors.borderLight,
             borderWidth: 1,
           }]}>
-            <Ionicons name="search" size={16} color={colors.textTertiary} style={styles.chatsSearchIcon} />
+            <Ionicons name="search" size={16} color={colors.textTertiary} style={styles.searchIcon} />
             <TextInput
               style={[styles.chatsSearchInput, { color: colors.text }]}
               placeholder="搜索聊天记录"
@@ -367,8 +365,8 @@ export default function WeChatScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderChatItem}
           contentContainerStyle={[
-            styles.chatItemsContainer, 
-            { backgroundColor: colors.backgroundSecondary },
+            styles.chatItemsContainer,
+            { backgroundColor: colors.background },
             // 确保内容至少占满屏幕高度，以便能够滚动
             sortedChats.length === 0 ? { flex: 1, justifyContent: 'center' } : { minHeight: '100%' }
           ]}
@@ -1005,10 +1003,10 @@ const styles = StyleSheet.create({
   // 通讯录相关样式
   contactsContainer: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f5f5f5', // 微信风格的浅灰色背景
   },
   contactsSearchContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f5f5f5', // 与容器背景一致
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
@@ -1037,7 +1035,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   featuresContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#ffffff', // 功能区域保持白色
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 8,
@@ -1064,16 +1062,18 @@ const styles = StyleSheet.create({
   },
   contactsListContainer: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f5f5f5', // 与整体背景一致
   },
   contactsListContent: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f5f5f5', // 与整体背景一致
     paddingBottom: 32,
   },
   sectionHeader: {
     backgroundColor: '#f5f5f5',
     paddingHorizontal: 16,
     paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e5e5', // 添加分隔线
   },
   sectionTitle: {
     fontSize: 14,
@@ -1086,7 +1086,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e5e5e5', // 更深的分隔线颜色
+    backgroundColor: '#ffffff', // 联系人项保持白色背景
+    // 添加微妙的阴影效果
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
   avatar: {
     width: 50,
@@ -1126,11 +1133,13 @@ const styles = StyleSheet.create({
     flex: 1,
     // 确保容器可以正确处理内部元素的高度
     flexDirection: 'column',
+    backgroundColor: '#f5f5f5', // 微信风格的浅灰色背景
   },
   chatsSearchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 0.5,
+    backgroundColor: '#f5f5f5', // 与容器背景一致
   },
   chatsSearchInputContainer: {
     flexDirection: 'row',
@@ -1181,6 +1190,7 @@ const styles = StyleSheet.create({
   },
   chatItemsContainer: {
     paddingBottom: 24,
+    backgroundColor: '#f5f5f5', // 与整体背景一致
   },
   chatItem: {
     flexDirection: 'row',
@@ -1189,9 +1199,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 0.5,
     backgroundColor: '#fff',
+    // 添加微妙的阴影效果，模拟真实微信
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
   chatItemPinned: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#e8f4fd', // 微信置顶聊天的浅蓝色背景
   },
   chatInfo: {
     flex: 1,

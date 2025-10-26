@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(node -c:*)",
+      "Bash(npx expo start:*)",
+      "Bash(node:*)",
+      "Bash(npm run lint)",
+      "Bash(expo start:*)",
+      "Bash(sudo node:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

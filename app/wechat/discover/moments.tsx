@@ -4,9 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Animated,
   Dimensions,
-  Easing,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -17,8 +15,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { Easing, runOnJS, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -121,641 +122,12 @@ const mockMoments: MomentItem[] = [
 // 微信绿色
 const WECHAT_GREEN = "#1AAD19";
 
-// 朋友圈操作菜单组件
-function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, position }: {
-  visible: boolean;
-  onClose: () => void;
-  onLike: () => void;
-  onComment: () => void;
-  liked: boolean;
-  position: { x: number; y: number } | null;
-}) {
-  const insets = useSafeAreaInsets();
-  const widthAnim = useRef(new Animated.Value(0)).current; // 胶囊宽度动画
-  const opacity = useRef(new Animated.Value(0)).current;   // 内容淡入
-  const [shouldRender, setShouldRender] = useState(visible);
-  const menuWidth = 150;
-  const computedLeft = position
-    ? Math.min(Math.max(position.x - menuWidth - 12, 12), SCREEN_WIDTH - menuWidth - 12)
-    : 0;
-  const computedTop = position ? Math.max(60, position.y - 20) : 0;
-
-  useEffect(() => {
-    if (visible) {
-      setShouldRender(true);
-      Animated.parallel([
-        Animated.timing(widthAnim, {
-          toValue: 150, // 调整胶囊最终宽度，从170减少到150以适应更窄的按钮
-          duration: 180,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: false,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 140,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 120,
-          useNativeDriver: true,
-        }),
-        Animated.timing(widthAnim, {
-          toValue: 0,
-          duration: 180,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: false,
-        }),
-      ]).start(({ finished }) => {
-        if (finished) {
-          setShouldRender(false);
-        }
-      });
-    }
-  }, [visible, opacity, widthAnim]);
-
-  if (!shouldRender || !position) return null;
-
-  return (
-    <View style={[StyleSheet.absoluteFill, { paddingBottom: isAndroid ? insets.bottom : 0 }]} pointerEvents="box-none">
-      <Pressable
-        style={StyleSheet.absoluteFill}
-        pointerEvents={visible ? 'auto' : 'none'}
-        onStartShouldSetResponder={() => {
-          onClose();
-          return false;
-        }}
-        onPress={onClose}
-      />
-      <Animated.View
-        style={[
-          styles.menuCapsule,
-          {
-            width: widthAnim,
-            position: 'absolute',
-            left: computedLeft,
-            top: computedTop,
-          },
-        ]}
-        pointerEvents="box-none"
-      >
-        <Animated.View style={[styles.menuRow, { opacity }]}>
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => {
-              onLike();
-              onClose();
-            }}
-          >
-            <Ionicons
-              name={liked ? "heart" : "heart-outline"}
-              size={18}
-              style={styles.menuIcon}
-            />
-            {/* 为点赞文字设置固定宽度，确保与评论按钮对称 */}
-            <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 35 }]}>
-              {liked ? "取消" : "赞"}
-            </Text>
-          </Pressable>
-
-          <View style={styles.divider} />
-
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => {
-              onComment();
-              onClose();
-            }}
-          >
-            <Ionicons name="chatbubble-outline" size={18} style={styles.menuIcon} />
-            {/* 为评论文字设置固定宽度，确保与点赞按钮对称 */}
-            <Text style={[styles.menuText, { width: 50 }]}>
-              评论
-            </Text>
-          </Pressable>
-        </Animated.View>
-
-        {/* 右侧小三角，指向"..."按钮 */}
-        <View style={styles.arrowWrapper}>
-          <View style={styles.arrow} />
-        </View>
-      </Animated.View>
-    </View>
-  );
-}
-
-// 朋友圈头像组件（封面用的）
-const MomentsAvatar = () => (
-  <View style={styles.momentsAvatar}>
-    <Text style={styles.momentsAvatarName}>当前用户</Text>
-    <View style={styles.momentsAvatarContainer}>
-      <Text style={styles.momentsAvatarText}>我</Text>
-    </View>
-  </View>
-);
-
-// 头像组件
-const AvatarComponent = ({ userName, userAvatar }: { userName: string; userAvatar: string }) => {
-  return (
-    <View style={styles.momentsCardAvatar}>
-      <View style={styles.momentsCardAvatarImage}>
-        <Text style={styles.avatarText}>{userName.charAt(0)}</Text>
-      </View>
-    </View>
-  );
-};
-
-// 朋友圈动态卡片组件
-const MomentsCard = ({
-  momentData,
-  onLike,
-  onComment,
-  onImagePress,
-  isMenuOpen,
-  onOpenMenu,
-  onCloseMenu,
-}: {
-  momentData: MomentItem;
-  onLike: (id: string) => void;
-  onComment: (id: string) => void;
-  onImagePress?: (momentId: string, images: string[], imgUri: string, index: number) => void;
-  isMenuOpen: boolean;
-  onOpenMenu: (id: string, position: { x: number; y: number }) => void;
-  onCloseMenu: () => void;
-}) => {
-  const moreBtnRef = useRef<View>(null);
-
-  const toggleMenu = () => {
-    if (isMenuOpen) {
-      onCloseMenu();
-      return;
-    }
-
-    if (moreBtnRef.current) {
-      moreBtnRef.current.measureInWindow((x, y, width, height) => {
-        onOpenMenu(momentData.id, { x, y: y + height / 2 });
-      });
-    }
-  };
-  
-  return (
-    <View style={styles.momentsCardWrapper}>
-      <AvatarComponent userName={momentData.userName} userAvatar={momentData.userAvatar} />
-      <View style={styles.momentsCardContentWrapper}>
-        {/* 用户名 */}
-        <Text style={styles.momentsCardTextBlue}>{momentData.userName}</Text>
-        <View style={styles.momentsCardContent}>
-          <Text style={styles.momentsCardTextContent}>
-            {momentData.content}
-          </Text>
-          {/* 图片网格 */}
-          {momentData.images && momentData.images.length > 0 && (
-            <MomentsImg
-              momentId={momentData.id}
-              imgList={momentData.images}
-              onImagePress={onImagePress}
-            />
-          )}
-        </View>
-        
-        {/* 点赞和评论 */}
-        {renderLikeAndComment(momentData)}
-        
-        {/* 操作按钮 */}
-        <View style={styles.momentsCardBottom}>
-          <Text style={styles.momentsCardTime}>{momentData.time}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {/* 使用新的三点菜单替换原有的操作按钮 */}
-            <View style={{ width: 20 }} />
-            <TouchableOpacity ref={moreBtnRef} style={styles.moreBtn} onPress={toggleMenu}>
-              <Ionicons name="ellipsis-horizontal" size={20} color="#888" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-};
-
-// 图片组件
-const MomentsImg = ({
-  momentId,
-  imgList,
-  onImagePress,
-}: {
-  momentId: string;
-  imgList: string[];
-  onImagePress?: (momentId: string, images: string[], imgUri: string, index: number) => void;
-}) => {
-  if (!imgList || imgList.length === 0) return null;
-  const imageCount = imgList.length;
-
-  if (imageCount === 1) {
-    return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        style={styles.singleImageWrapper}
-        onPress={() => onImagePress && onImagePress(momentId, imgList, imgList[0], 0)}
-      >
-        <Image
-          source={{ uri: imgList[0] }}
-          style={styles.singleImage}
-          resizeMode="cover"
-          onError={() => console.log('图片加载失败:', imgList[0])}
-        />
-      </TouchableOpacity>
-    );
-  }
-
-  return (
-    <View style={styles.multiImageGrid}>
-      {imgList.map((imgUri, index) => (
-        <TouchableOpacity
-          key={index}
-          activeOpacity={0.8}
-          style={styles.multiImageItem}
-          onPress={() => onImagePress && onImagePress(momentId, imgList, imgUri, index)}
-        >
-          <Image
-            source={{ uri: imgUri }}
-            style={styles.multiImage}
-            resizeMode="cover"
-            onError={() => console.log('图片加载失败:', imgUri)}
-          />
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-};
-
-// 点赞和评论渲染函数
-const renderLikeAndComment = (moment: MomentItem) => {
-  if (moment.likes.length === 0 && moment.comments.length === 0) return null;
-
-  const allItems: {
-    type: 'like' | 'comment';
-    id: string;
-    content: string;
-    name?: string;
-    replyTo?: string;
-  }[] = [];
-
-  if (moment.likes.length > 0) {
-    allItems.push({
-      type: 'like',
-      id: 'like-header',
-      content: moment.likes.map(l => l.name).join(', ')
-    });
-  }
-
-  moment.comments.forEach(comment => {
-    allItems.push({
-      type: 'comment',
-      id: comment.id,
-      content: comment.content,
-      name: comment.name,
-      replyTo: comment.replyTo
-    });
-  });
-
-  return (
-    <View style={styles.momentsCardComment}>
-      {allItems.map((item, index) => (
-        <View key={item.id || `item-${index}`} style={styles.likeCommentItem}>
-          {item.type === 'like' ? (
-            <View style={styles.likeSection}>
-              <Ionicons name="heart-outline" size={16} color="#1877f2" style={styles.likeIcon} />
-              <Text style={[styles.likeText, { color: '#1877f2' }]} numberOfLines={0}>
-                {item.content}
-              </Text>
-            </View>
-          ) : (
-            item.type === 'comment' && (
-              <TouchableOpacity style={styles.commentItem}>
-                <Text style={[styles.commentUser, { color: '#1877f2' }]} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={[styles.commentText, { color: '#333' }]} numberOfLines={0}>
-                  {item.replyTo ? ` 回复 ${item.replyTo}` : ''}: {item.content}
-                </Text>
-              </TouchableOpacity>
-            )
-          )}
-        </View>
-      ))}
-    </View>
-  );
-};
-
-export default function MomentsScreen() {
-  const router = useRouter();
-  const [moments, setMoments] = useState<MomentItem[]>(mockMoments);
-  const [scrollY] = useState(new Animated.Value(1));
-  const insets = useSafeAreaInsets();
-  const [commentModalVisible, setCommentModalVisible] = useState(false); // 添加评论模态框状态
-  const [currentCommentId, setCurrentCommentId] = useState<string | null>(null); // 添加当前评论的动态ID
-  const [commentText, setCommentText] = useState(''); // 添加评论文本状态
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
-  const [previewImage, setPreviewImage] = useState<{
-    uri: string;
-    index: number;
-    images: string[];
-    momentId: string;
-  } | null>(null);
-
-  // 头部透明度动画 - 用于控制顶部标题栏的显示/隐藏
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
-
-  const currentUser = '当前用户';
-
-  const currentActiveMoment = useMemo(() => {
-    if (!activeMenuId) {
-      return null;
-    }
-    return moments.find(moment => moment.id === activeMenuId) ?? null;
-  }, [activeMenuId, moments]);
-
-  const handleLike = (id: string) => {
-    // 添加触觉反馈
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    setMoments(prev => prev.map(moment => {
-      if (moment.id === id) {
-        const isLiked = moment.likes.some(like => like.name === currentUser);
-        let newLikes = [...moment.likes];
-        
-        if (isLiked) {
-          newLikes = newLikes.filter(like => like.name !== currentUser);
-          // 取消点赞的反馈
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } else {
-          newLikes = [...newLikes, { id: `${Date.now()}`, name: currentUser }];
-          // 点赞的反馈
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-        
-        return { ...moment, likes: newLikes, liked: !isLiked };
-      }
-      return moment;
-    }));
-  };
-
-  const handleAddComment = (id: string, replyTo?: string) => {
-    // 添加触觉反馈
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    setActiveMenuId(null);
-    // 设置当前评论的动态ID并显示评论模态框
-    setCurrentCommentId(id);
-    setCommentModalVisible(true);
-    setCommentText('');
-
-    console.log(`添加评论到动态: ${id}, 回复: ${replyTo || '动态'}`);
-  };
-
-  const handleImagePress = (momentId: string, images: string[], imgUri: string, index: number) => {
-    // 添加触觉反馈
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    setPreviewImage({ uri: imgUri, index, images, momentId });
-  };
-
-  // 提交评论
-  const submitComment = () => {
-    if (commentText.trim() && currentCommentId) {
-      // 这里可以添加实际的评论提交逻辑
-      console.log(`提交评论: ${commentText} 到动态: ${currentCommentId}`);
-      Alert.alert('评论成功', `您已评论: ${commentText}`);
-      
-      // 关闭模态框并清空输入框
-      setCommentModalVisible(false);
-      setCommentText('');
-    }
-  };
-
-  // 取消评论
-  const cancelComment = () => {
-    setCommentModalVisible(false);
-    setCommentText('');
-  };
-
-  return (
-    // 移除容器的背景色设置，让页面全屏显示
-    <View style={styles.container}>
-      {/* 背景图区域的返回和相机按钮 - 始终显示 */}
-      <View 
-        style={[
-          styles.backgroundButtonContainer,
-          { 
-            // 去掉所有设备的安全区域处理，实现沉浸式体验
-            paddingTop: 0,
-            top: 0,
-            // 让背景图上的按钮向下一些，避免与状态栏重叠
-            marginTop: 50,
-          }
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.backgroundHeaderButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={styles.backgroundHeaderButton}
-          onPress={() => console.log('打开相机')}
-        >
-          <Ionicons name="camera" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
-      
-      {/* 顶部标题栏 - 滚动时显示，增加高度 */}
-      <Animated.View 
-        style={[
-          styles.headerOverlay,
-          { 
-            opacity: headerOpacity,
-            // 去掉所有设备的安全区域处理，实现沉浸式体验
-            paddingTop: 0,
-            top: 0,
-          }
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="chevron-back" size={24} color="#000" />
-        </TouchableOpacity>
-        
-        <Text style={styles.headerTitle}>朋友圈</Text>
-        
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => console.log('打开相机')}
-        >
-          <Ionicons name="camera" size={24} color="#000" />
-        </TouchableOpacity>
-      </Animated.View>
-      
-      <ScrollView
-        style={styles.scrollView}
-        scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        onScrollBeginDrag={() => {
-          if (activeMenuId) {
-            setActiveMenuId(null);
-          }
-        }}
-        showsVerticalScrollIndicator={false}
-        // 为所有设备正确处理安全区域
-        contentContainerStyle={{
-          // 所有设备都需要额外的padding来避免内容被底部安全区域遮挡
-          paddingBottom: insets.bottom,
-          // 去掉所有设备的顶部安全区域处理
-          paddingTop: 0,
-          // 为所有设备设置背景色，确保底部安全区域颜色一致
-          backgroundColor: '#fff',
-        }}
-      >
-        {/* 背景图片 - 移除不必要的paddingTop */}
-        <View style={styles.headerCover}>
-          <Image
-            source={{ uri: 'https://img1.baidu.com/it/u=713295211,1805964126&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=281' }}
-            style={styles.headerBackground}
-            resizeMode="cover"
-          />
-        </View>
-
-        {/* 个人信息区域 */}
-        <MomentsAvatar />
-
-        {/* 空白区域，避免头像与动态内容重叠 */}
-        <View style={{ height: 50, backgroundColor: '#fff' }} />
-
-        {/* 动态列表 */}
-        {moments.map((moment, index) => (
-          <MomentsCard
-            key={moment.id}
-            momentData={moment}
-            onLike={handleLike}
-            onComment={handleAddComment}
-            onImagePress={handleImagePress}
-            isMenuOpen={activeMenuId === moment.id}
-            onOpenMenu={(id, position) => {
-              setMenuPosition(position);
-              setActiveMenuId(id);
-            }}
-            onCloseMenu={() => {
-              setActiveMenuId(null);
-            }}
-          />
-        ))}
-        
-        {/* 
-          移除底部填充，避免在安卓设备上出现多余的状态栏
-          如果需要底部间距，应该使用安全区域insets.bottom来处理 
-        */}
-      </ScrollView>
-
-      {/* 评论输入模态框 */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={commentModalVisible}
-        onRequestClose={cancelComment}
-      >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.commentModalContainer}
-        >
-          <View style={styles.commentModalOverlay} onStartShouldSetResponder={() => true} onResponderGrant={cancelComment}>
-            <View style={styles.commentModalContent} onStartShouldSetResponder={() => true}>
-              <View style={styles.commentInputContainer}>
-                <TextInput
-                  style={styles.commentInput}
-                  placeholder="请输入评论..."
-                  value={commentText}
-                  onChangeText={setCommentText}
-                  multiline={true}
-                  autoFocus={true}
-                  onSubmitEditing={submitComment}
-                />
-                <View style={styles.commentButtonContainer}>
-                  <TouchableOpacity style={styles.commentCancelButton} onPress={cancelComment}>
-                    <Text style={styles.commentButtonText}>取消</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.commentSubmitButton, !commentText.trim() && styles.commentSubmitButtonDisabled]} 
-                    onPress={submitComment}
-                    disabled={!commentText.trim()}
-                  >
-                    <Text style={styles.commentButtonText}>发送</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <MomentsActionMenu
-        visible={!!activeMenuId && !!menuPosition}
-        liked={!!currentActiveMoment?.liked}
-        position={menuPosition}
-        onClose={() => {
-          setActiveMenuId(null);
-        }}
-        onLike={() => {
-          if (activeMenuId) {
-            handleLike(activeMenuId);
-          }
-        }}
-        onComment={() => {
-          if (activeMenuId) {
-            handleAddComment(activeMenuId);
-          }
-        }}
-      />
-
-      <Modal
-        visible={!!previewImage}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setPreviewImage(null)}
-      >
-        <Pressable style={styles.imagePreviewOverlay} onPress={() => setPreviewImage(null)}>
-          {previewImage && (
-            <>
-              <Image source={{ uri: previewImage.uri }} style={styles.imagePreview} resizeMode="contain" />
-              <Text style={styles.imagePreviewIndex}>
-                {`${previewImage.index + 1}/${previewImage.images.length}`}
-              </Text>
-            </>
-          )}
-        </Pressable>
-      </Modal>
-    </View>
-  );
-}
-
+// 样式定义 - 移到组件之前
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     // 移除背景色，让页面全屏显示
+    paddingTop: 0, // 完全移除顶部padding
   },
   scrollView: {
     flex: 1,
@@ -1147,3 +519,693 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+
+// 朋友圈操作菜单组件（使用RNGH + Reanimated重构）
+function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, position }: {
+  visible: boolean;
+  onClose: () => void;
+  onLike: () => void;
+  onComment: () => void;
+  liked: boolean;
+  position: { x: number; y: number } | null;
+}) {
+  // 直接从模块级别获取 insets，不在组件内部重新声明
+  const menuWidth = 150;
+
+  // 使用Reanimated动画值
+  const [menuVisible, setMenuVisible] = useState(visible);
+  const [menuOpacity, setMenuOpacity] = useState(0);
+  const [menuScale, setMenuScale] = useState(0.8);
+
+  // 计算菜单位置
+  const computedLeft = position
+    ? Math.min(Math.max(position.x - menuWidth - 12, 12), SCREEN_WIDTH - menuWidth - 12)
+    : 0;
+  const computedTop = position ? Math.max(60, position.y - 20) : 0;
+
+  // Reanimated样式
+  const menuStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(menuOpacity, { duration: 140 }),
+    transform: [{
+      scale: withTiming(menuScale, {
+        duration: 180,
+        easing: Easing.out(Easing.quad)
+      })
+    }],
+  }));
+
+  // 外部点击手势
+  const tapGesture = Gesture.Tap()
+    .onStart(() => {
+      runOnJS(onClose)();
+    })
+    .runOnJS(true);
+
+  // 滚动手势（与ScrollView协调）
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      runOnJS(onClose)();
+    })
+    .runOnJS(true);
+
+  // 同时识别点击和滚动手势
+  const combinedGesture = Gesture.Simultaneous(tapGesture, panGesture);
+
+  useEffect(() => {
+    if (visible) {
+      setMenuVisible(true);
+      // 延迟设置动画值以确保DOM渲染完成
+      setTimeout(() => {
+        setMenuOpacity(1);
+        setMenuScale(1);
+      }, 16);
+    } else {
+      setMenuOpacity(0);
+      setMenuScale(0.8);
+      setTimeout(() => {
+        setMenuVisible(false);
+      }, 180);
+    }
+  }, [visible]);
+
+  if (!menuVisible || !position) return null;
+
+  return (
+    <GestureDetector gesture={combinedGesture}>
+      <View style={[StyleSheet.absoluteFill, { paddingBottom: isAndroid ? 20 : 0 }]} pointerEvents="box-none">
+        {/* 全屏手势检测区域 */}
+        <View style={[StyleSheet.absoluteFill, { pointerEvents: 'auto' }]} />
+
+        {/* 菜单胶囊 */}
+        <Animated.View
+          style={[
+            styles.menuCapsule,
+            {
+              width: menuWidth,
+              position: 'absolute',
+              left: computedLeft,
+              top: computedTop,
+            },
+            menuStyle
+          ]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.menuRow}>
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                onLike();
+                onClose();
+              }}
+            >
+              <Ionicons
+                name={liked ? "heart" : "heart-outline"}
+                size={18}
+                style={styles.menuIcon}
+              />
+              <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 35 }]}>
+                {liked ? "取消" : "赞"}
+              </Text>
+            </Pressable>
+
+            <View style={styles.divider} />
+
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                onComment();
+                onClose();
+              }}
+            >
+              <Ionicons name="chatbubble-outline" size={18} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { width: 50 }]}>
+                评论
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* 右侧小三角，指向"..."按钮 */}
+          <View style={styles.arrowWrapper}>
+            <View style={styles.arrow} />
+          </View>
+        </Animated.View>
+      </View>
+    </GestureDetector>
+  );
+}
+
+// 朋友圈头像组件（封面用的）
+const MomentsAvatar = () => (
+  <View style={styles.momentsAvatar}>
+    <Text style={styles.momentsAvatarName}>当前用户</Text>
+    <View style={styles.momentsAvatarContainer}>
+      <Text style={styles.momentsAvatarText}>我</Text>
+    </View>
+  </View>
+);
+
+// 头像组件
+const AvatarComponent = ({ userName, userAvatar }: { userName: string; userAvatar: string }) => {
+  return (
+    <View style={styles.momentsCardAvatar}>
+      <View style={styles.momentsCardAvatarImage}>
+        <Text style={styles.avatarText}>{userName.charAt(0)}</Text>
+      </View>
+    </View>
+  );
+};
+
+// 朋友圈动态卡片组件
+const MomentsCard = ({
+  momentData,
+  onLike,
+  onComment,
+  onImagePress,
+  isMenuOpen,
+  onOpenMenu,
+  onCloseMenu,
+}: {
+  momentData: MomentItem;
+  onLike: (id: string) => void;
+  onComment: (id: string) => void;
+  onImagePress?: (momentId: string, images: string[], imgUri: string, index: number) => void;
+  isMenuOpen: boolean;
+  onOpenMenu: (id: string, position: { x: number; y: number }) => void;
+  onCloseMenu: () => void;
+}) => {
+  const moreBtnRef = useRef<View>(null);
+
+  const toggleMenu = () => {
+    if (isMenuOpen) {
+      onCloseMenu();
+      return;
+    }
+
+    if (moreBtnRef.current) {
+      moreBtnRef.current.measureInWindow((x, y, width, height) => {
+        onOpenMenu(momentData.id, { x, y: y + height / 2 });
+      });
+    }
+  };
+  
+  return (
+    <View style={styles.momentsCardWrapper}>
+      <AvatarComponent userName={momentData.userName} userAvatar={momentData.userAvatar} />
+      <View style={styles.momentsCardContentWrapper}>
+        {/* 用户名 */}
+        <Text style={styles.momentsCardTextBlue}>{momentData.userName}</Text>
+        <View style={styles.momentsCardContent}>
+          <Text style={styles.momentsCardTextContent}>
+            {momentData.content}
+          </Text>
+          {/* 图片网格 */}
+          {momentData.images && momentData.images.length > 0 && (
+            <MomentsImg
+              momentId={momentData.id}
+              imgList={momentData.images}
+              onImagePress={onImagePress}
+            />
+          )}
+        </View>
+        
+        {/* 点赞和评论 */}
+        {renderLikeAndComment(momentData)}
+        
+        {/* 操作按钮 */}
+        <View style={styles.momentsCardBottom}>
+          <Text style={styles.momentsCardTime}>{momentData.time}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {/* 使用新的三点菜单替换原有的操作按钮 */}
+            <View style={{ width: 20 }} />
+            <TouchableOpacity ref={moreBtnRef} style={styles.moreBtn} onPress={toggleMenu}>
+              <Ionicons name="ellipsis-horizontal" size={20} color="#888" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// 图片组件
+const MomentsImg = ({
+  momentId,
+  imgList,
+  onImagePress,
+}: {
+  momentId: string;
+  imgList: string[];
+  onImagePress?: (momentId: string, images: string[], imgUri: string, index: number) => void;
+}) => {
+  if (!imgList || imgList.length === 0) return null;
+  const imageCount = imgList.length;
+
+  if (imageCount === 1) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.singleImageWrapper}
+        onPress={() => onImagePress && onImagePress(momentId, imgList, imgList[0], 0)}
+      >
+        <Image
+          source={{ uri: imgList[0] }}
+          style={styles.singleImage}
+          resizeMode="cover"
+          onError={() => console.log('图片加载失败:', imgList[0])}
+        />
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={styles.multiImageGrid}>
+      {imgList.map((imgUri, index) => (
+        <TouchableOpacity
+          key={index}
+          activeOpacity={0.8}
+          style={styles.multiImageItem}
+          onPress={() => onImagePress && onImagePress(momentId, imgList, imgUri, index)}
+        >
+          <Image
+            source={{ uri: imgUri }}
+            style={styles.multiImage}
+            resizeMode="cover"
+            onError={() => console.log('图片加载失败:', imgUri)}
+          />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+};
+
+// 点赞和评论渲染函数
+const renderLikeAndComment = (moment: MomentItem) => {
+  if (moment.likes.length === 0 && moment.comments.length === 0) return null;
+
+  const allItems: {
+    type: 'like' | 'comment';
+    id: string;
+    content: string;
+    name?: string;
+    replyTo?: string;
+  }[] = [];
+
+  if (moment.likes.length > 0) {
+    allItems.push({
+      type: 'like',
+      id: 'like-header',
+      content: moment.likes.map(l => l.name).join(', ')
+    });
+  }
+
+  moment.comments.forEach(comment => {
+    allItems.push({
+      type: 'comment',
+      id: comment.id,
+      content: comment.content,
+      name: comment.name,
+      replyTo: comment.replyTo
+    });
+  });
+
+  return (
+    <View style={styles.momentsCardComment}>
+      {allItems.map((item, index) => (
+        <View key={item.id || `item-${index}`} style={styles.likeCommentItem}>
+          {item.type === 'like' ? (
+            <View style={styles.likeSection}>
+              <Ionicons name="heart-outline" size={16} color="#1877f2" style={styles.likeIcon} />
+              <Text style={[styles.likeText, { color: '#1877f2' }]} numberOfLines={0}>
+                {item.content}
+              </Text>
+            </View>
+          ) : (
+            item.type === 'comment' && (
+              <TouchableOpacity style={styles.commentItem}>
+                <Text style={[styles.commentUser, { color: '#1877f2' }]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.commentText, { color: '#333' }]} numberOfLines={0}>
+                  {item.replyTo ? ` 回复 ${item.replyTo}` : ''}: {item.content}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function MomentsScreen() {
+  const router = useRouter();
+  const [moments, setMoments] = useState<MomentItem[]>(mockMoments);
+  const insets = useSafeAreaInsets();
+  const [commentModalVisible, setCommentModalVisible] = useState(false); // 添加评论模态框状态
+  const [currentCommentId, setCurrentCommentId] = useState<string | null>(null); // 添加当前评论的动态ID
+  const [commentText, setCommentText] = useState(''); // 添加评论文本状态
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [previewImage, setPreviewImage] = useState<{
+    uri: string;
+    index: number;
+    images: string[];
+    momentId: string;
+  } | null>(null);
+
+  // 添加滚动偏移量状态来控制标题显示
+  const [scrollY, setScrollY] = useState(0);
+
+  // 头部透明度动画 - 用于控制顶部标题栏的显示/隐藏
+  const headerOpacity = { opacity: 1 }; // 暂时简化，避免复杂的Animated API
+
+  // insets 变量已经在第863行声明，这里不需要重复声明
+
+  const currentUser = '当前用户';
+
+  const currentActiveMoment = useMemo(() => {
+    if (!activeMenuId) {
+      return null;
+    }
+    return moments.find(moment => moment.id === activeMenuId) ?? null;
+  }, [activeMenuId, moments]);
+
+  const handleLike = (id: string) => {
+    // 添加触觉反馈
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    setMoments(prev => prev.map(moment => {
+      if (moment.id === id) {
+        const isLiked = moment.likes.some(like => like.name === currentUser);
+        let newLikes = [...moment.likes];
+        
+        if (isLiked) {
+          newLikes = newLikes.filter(like => like.name !== currentUser);
+          // 取消点赞的反馈
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else {
+          newLikes = [...newLikes, { id: `${Date.now()}`, name: currentUser }];
+          // 点赞的反馈
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        
+        return { ...moment, likes: newLikes, liked: !isLiked };
+      }
+      return moment;
+    }));
+  };
+
+  const handleAddComment = (id: string, replyTo?: string) => {
+    // 添加触觉反馈
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    setActiveMenuId(null);
+    // 设置当前评论的动态ID并显示评论模态框
+    setCurrentCommentId(id);
+    setCommentModalVisible(true);
+    setCommentText('');
+
+    console.log(`添加评论到动态: ${id}, 回复: ${replyTo || '动态'}`);
+  };
+
+  const handleImagePress = (momentId: string, images: string[], imgUri: string, index: number) => {
+    // 添加触觉反馈
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    setPreviewImage({ uri: imgUri, index, images, momentId });
+  };
+
+  // 提交评论
+  const submitComment = () => {
+    if (commentText.trim() && currentCommentId) {
+      // 这里可以添加实际的评论提交逻辑
+      console.log(`提交评论: ${commentText} 到动态: ${currentCommentId}`);
+      Alert.alert('评论成功', `您已评论: ${commentText}`);
+      
+      // 关闭模态框并清空输入框
+      setCommentModalVisible(false);
+      setCommentText('');
+    }
+  };
+
+  // 取消评论
+  const cancelComment = () => {
+    setCommentModalVisible(false);
+    setCommentText('');
+  };
+
+  return (
+    <>
+      {/* 移除容器的背景色设置，让页面全屏显示，完全去除顶部安全区 */}
+      <View style={[styles.container, { paddingTop: 0, marginTop: 0 }]}>
+      {/* 背景图区域的顶部安全区域容器（只在背景图状态时显示） */}
+      {scrollY <= 100 && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top,
+            backgroundColor: 'transparent',
+            zIndex: 10,
+          }}
+        />
+      )}
+      
+      {/* 统一的标题栏 - 根据滚动位置动态显示/隐藏 */}
+      <View
+        style={[
+          styles.headerOverlay,
+          {
+            // 标题栏在安全区域下面
+            paddingTop: scrollY <= 100 ? insets.top : 0,
+            paddingHorizontal: 24,
+            top: 0,
+            // 滚动到内容区域时显示背景，背景图区域时透明
+            backgroundColor: scrollY > 100 ? 'rgba(255, 255, 255, 0.95)' : 'transparent',
+            // 透明状态下移除阴影和高度，避免出现方块
+            shadowOpacity: scrollY > 100 ? 0.1 : 0,
+            shadowOffset: {
+              width: 0,
+              height: scrollY > 100 ? 2 : 0,
+            },
+            shadowRadius: scrollY > 100 ? 3.84 : 0,
+            elevation: scrollY > 100 ? 5 : 0,
+            height: scrollY > 100 ? 110 : 44,
+          }
+        ]}
+      >
+        <TouchableOpacity
+          style={[
+            styles.headerButton,
+            {
+              // 统一在scrollY > 100时改变样式，封面模式下往下移动更多
+              marginTop: scrollY > 100 ? 50 : (isAndroid ? 65 : 45),
+            }
+          ]}
+          onPress={() => router.back()}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={scrollY > 100 ? '#000' : '#fff'}
+          />
+        </TouchableOpacity>
+
+        <Text style={[
+          styles.headerTitle,
+          {
+            color: scrollY > 100 ? '#000' : '#fff',
+            opacity: scrollY > 100 ? 1 : 0, // 同步标题显示逻辑
+            // 标题同样调整，往下移动
+            marginTop: scrollY > 100 ? 50 : (isAndroid ? 65 : 45),
+          }
+        ]}>朋友圈</Text>
+
+        <TouchableOpacity
+          style={[
+            styles.headerButton,
+            {
+              // 统一在scrollY > 100时改变样式，封面模式下往下移动更多
+              marginTop: scrollY > 100 ? 50 : (isAndroid ? 65 : 45),
+            }
+          ]}
+          onPress={() => console.log('打开相机')}
+        >
+          <Ionicons
+            name="camera"
+            size={24}
+            color={scrollY > 100 ? '#000' : '#fff'}
+          />
+        </TouchableOpacity>
+      </View>
+      
+      <ScrollView
+        style={styles.scrollView}
+        scrollEventThrottle={16}
+        onScroll={(event) => {
+          const scrollY = event.nativeEvent.contentOffset.y;
+          setScrollY(scrollY);
+
+          // 关闭菜单
+          if (activeMenuId) {
+            setActiveMenuId(null);
+          }
+        }}
+        showsVerticalScrollIndicator={false}
+        // 安全区域处理 - 只在内容区域应用，顶部完全去除
+        contentContainerStyle={{
+          // 只在内容区域（不是封面区域）添加底部安全区域padding
+          paddingBottom: insets.bottom,
+          // 封面区域不添加任何顶部padding，延伸到屏幕顶部
+          paddingTop: 0,
+          // 背景色只应用到内容区域，封面区域保持透明
+          backgroundColor: 'transparent',
+        }}
+      >
+        {/* 添加透明的TouchableWithoutFeedback来检测点击 */}
+        <TouchableWithoutFeedback
+          style={[StyleSheet.absoluteFill, { paddingTop: 0 }]}
+          onPress={() => {
+            if (activeMenuId) {
+              setActiveMenuId(null);
+            }
+          }}
+        >
+        <View style={{ flex: 1, paddingTop: 0 }}>
+          {/* 背景图片 - 移除所有边距，延伸到屏幕边缘 */}
+          <View style={[
+            styles.headerCover,
+            {
+              // 移除所有边距，让背景图延伸到屏幕边缘
+              marginLeft: -24,
+              marginRight: -24,
+              width: SCREEN_WIDTH + 48,
+            }
+          ]}>
+            <Image
+              source={{ uri: 'https://img1.baidu.com/it/u=713295211,1805964126&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=281' }}
+              style={styles.headerBackground}
+              resizeMode="cover"
+            />
+          </View>
+
+          {/* 个人信息区域 */}
+          <MomentsAvatar />
+
+          {/* 内容区域分隔 */}
+          <View style={{
+            height: 50,
+            backgroundColor: '#fff',
+            marginLeft: -24,
+            marginRight: -24,
+            width: SCREEN_WIDTH + 48,
+          }} />
+
+          {/* 动态列表 */}
+          {moments.map((moment, index) => (
+            <MomentsCard
+              key={moment.id}
+              momentData={moment}
+              onLike={handleLike}
+              onComment={handleAddComment}
+              onImagePress={handleImagePress}
+              isMenuOpen={activeMenuId === moment.id}
+              onOpenMenu={(id, position) => {
+                setMenuPosition(position);
+                setActiveMenuId(id);
+              }}
+              onCloseMenu={() => {
+                setActiveMenuId(null);
+              }}
+            />
+          ))}
+        </View>
+      </TouchableWithoutFeedback>
+    </ScrollView>
+
+      {/* 评论输入模态框 */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={commentModalVisible}
+        onRequestClose={cancelComment}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.commentModalContainer}
+        >
+          <View style={styles.commentModalOverlay} onStartShouldSetResponder={() => true} onResponderGrant={cancelComment}>
+            <View style={styles.commentModalContent} onStartShouldSetResponder={() => true}>
+              <View style={styles.commentInputContainer}>
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="请输入评论..."
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  multiline={true}
+                  autoFocus={true}
+                  onSubmitEditing={submitComment}
+                />
+                <View style={styles.commentButtonContainer}>
+                  <TouchableOpacity style={styles.commentCancelButton} onPress={cancelComment}>
+                    <Text style={styles.commentButtonText}>取消</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.commentSubmitButton, !commentText.trim() && styles.commentSubmitButtonDisabled]} 
+                    onPress={submitComment}
+                    disabled={!commentText.trim()}
+                  >
+                    <Text style={styles.commentButtonText}>发送</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <MomentsActionMenu
+        visible={!!activeMenuId && !!menuPosition}
+        liked={!!currentActiveMoment?.liked}
+        position={menuPosition}
+        onClose={() => {
+          setActiveMenuId(null);
+        }}
+        onLike={() => {
+          if (activeMenuId) {
+            handleLike(activeMenuId);
+          }
+        }}
+        onComment={() => {
+          if (activeMenuId) {
+            handleAddComment(activeMenuId);
+          }
+        }}
+      />
+
+      <Modal
+        visible={!!previewImage}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <Pressable style={styles.imagePreviewOverlay} onPress={() => setPreviewImage(null)}>
+          {previewImage && (
+            <>
+              <Image source={{ uri: previewImage.uri }} style={styles.imagePreview} resizeMode="contain" />
+              <Text style={styles.imagePreviewIndex}>
+                {`${previewImage.index + 1}/${previewImage.images.length}`}
+              </Text>
+            </>
+          )}
+        </Pressable>
+      </Modal>
+    </View>
+  </>
+  );
+}
+
+export default MomentsScreen;

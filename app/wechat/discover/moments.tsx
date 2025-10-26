@@ -132,6 +132,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, positio
   liked: boolean;
   position: { x: number; y: number };
 }) {
+  const insets = useSafeAreaInsets();
   const widthAnim = useRef(new Animated.Value(0)).current; // 胶囊宽度动画
   const opacity = useRef(new Animated.Value(0)).current;   // 内容淡入
 
@@ -171,7 +172,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, positio
 
   return (
     <Modal visible={visible} transparent={true} animationType="none" statusBarTranslucent={true} presentationStyle="overFullScreen">
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }]}>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent', paddingBottom: isAndroid ? insets.bottom : 0 }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
           <Animated.View style={[styles.menuCapsule, { width: widthAnim, position: 'absolute', left: position.x - 150 - 10, top: position.y - 5 }]} onStartShouldSetResponder={() => true} onResponderGrant={() => {}}>
             <Animated.View style={[styles.menuRow, { opacity }]}>

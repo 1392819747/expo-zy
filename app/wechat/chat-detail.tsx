@@ -3,8 +3,11 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
+  Pressable,
   Platform,
   StatusBar,
   StyleSheet,
@@ -14,7 +17,8 @@ import {
   View,
 } from 'react-native';
 import type { Edge } from 'react-native-safe-area-context';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Clipboard from 'expo-clipboard';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { mockContacts } from '../../models/contacts';
 
@@ -73,12 +77,12 @@ export default function ChatDetailScreen() {
   const router = useRouter();
   const [draftMessage, setDraftMessage] = useState('');
   const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
   const isIOS26OrAbove = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
   const hasNativeHeader = Platform.OS === 'android' || isIOS26OrAbove;
   const safeAreaEdges: Edge[] = hasNativeHeader
     ? ['left', 'right', 'bottom']
     : ['top', 'left', 'right', 'bottom'];
-
   const chatId = useMemo(() => {
     // 优先使用contactId参数，其次是id参数
     let idToUse = '';
@@ -89,6 +93,9 @@ export default function ChatDetailScreen() {
     }
     return idToUse;
   }, [id, contactId]);
+  const [conversation, setConversation] = useState<Message[]>(chatHistories[chatId] ?? defaultHistory);
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [actionSheetVisible, setActionSheetVisible] = useState(false);
 
   const contact = useMemo(() => {
     // 如果有传入的联系人信息，优先使用
@@ -132,7 +139,68 @@ export default function ChatDetailScreen() {
     // 这些选项应该在_layout.tsx中配置
   }, [conversationTitle, colors, contact, handleEditContact]);
 
-  const messages = chatHistories[chatId] ?? defaultHistory;
+  useEffect(() => {
+    setConversation(chatHistories[chatId] ?? defaultHistory);
+  }, [chatId]);
+
+  const handleMessageLongPress = (message: Message) => {
+    if (message.sender === 'system') {
+      return;
+    }
+    setSelectedMessage(message);
+    setActionSheetVisible(true);
+  };
+
+  const closeActionSheet = () => {
+    setActionSheetVisible(false);
+    setSelectedMessage(null);
+  };
+
+  const handleCopyMessage = async () => {
+    if (!selectedMessage) return;
+    await Clipboard.setStringAsync(selectedMessage.text);
+    closeActionSheet();
+    Alert.alert('已复制', '消息内容已复制到剪贴板');
+  };
+
+  const handleRecallMessage = () => {
+    if (!selectedMessage) return;
+    if (selectedMessage.sender !== 'me') {
+      Alert.alert('提示', '只能撤回自己发送的消息');
+      return;
+    }
+    setConversation(prev => prev.filter(message => message.id !== selectedMessage.id));
+    closeActionSheet();
+    Alert.alert('撤回成功', '消息已撤回');
+  };
+
+  const handleCollectMessage = () => {
+    if (!selectedMessage) return;
+    closeActionSheet();
+    Alert.alert('收藏成功', '消息已收藏，可在“收藏”中查看');
+  };
+
+  const handleQuoteMessage = () => {
+    if (!selectedMessage) return;
+    setDraftMessage(prev => {
+      const quoteText = `> ${selectedMessage.text}`;
+      return prev ? `${prev}\n${quoteText}\n` : `${quoteText}\n`;
+    });
+    closeActionSheet();
+  };
+
+  const handleMultiSelect = () => {
+    closeActionSheet();
+    Alert.alert('提示', '多选功能正在开发中，敬请期待');
+  };
+
+  const actionItems = [
+    { id: 'copy', label: '复制', onPress: handleCopyMessage, enabled: !!selectedMessage },
+    { id: 'recall', label: '撤回', onPress: handleRecallMessage, enabled: selectedMessage?.sender === 'me' },
+    { id: 'multi', label: '多选', onPress: handleMultiSelect, enabled: !!selectedMessage },
+    { id: 'favorite', label: '收藏', onPress: handleCollectMessage, enabled: !!selectedMessage },
+    { id: 'quote', label: '引用', onPress: handleQuoteMessage, enabled: !!selectedMessage },
+  ];
 
   const renderMessageItem = ({ item }: { item: Message }) => {
     if (item.sender === 'system') {
@@ -152,12 +220,16 @@ export default function ChatDetailScreen() {
             {isMe ? '我' : contact?.avatar || contact?.name?.charAt(0) || chatId === 'assistant' ? '文' : chatId === 'group' ? '团' : chatId === 'notifications' ? '通' : '联'}
           </Text>
         </View>
-        <View style={[styles.messageContent, isMe && styles.messageContentMe]}>
+        <Pressable
+          style={[styles.messageContent, isMe && styles.messageContentMe]}
+          onLongPress={() => handleMessageLongPress(item)}
+          delayLongPress={250}
+        >
           <View style={[styles.messageBubble, isMe ? { backgroundColor: colors.chatBubbleMe } : { backgroundColor: colors.chatBubbleOther }]}>
             <Text style={[styles.messageText, { color: colors.text }]}>{item.text}</Text>
           </View>
           {item.time && <Text style={[styles.messageTime, { color: colors.textTertiary }, isMe && styles.messageTimeMe]}>{item.time}</Text>}
-        </View>
+        </Pressable>
       </View>
     );
   };
@@ -175,7 +247,7 @@ export default function ChatDetailScreen() {
       >
         <View style={styles.messagesWrapper}>
           <FlatList
-            data={messages}
+            data={conversation}
             keyExtractor={(item) => item.id}
             renderItem={renderMessageItem}
             contentContainerStyle={styles.messagesContent}
@@ -206,6 +278,53 @@ export default function ChatDetailScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <Modal
+        visible={actionSheetVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeActionSheet}
+      >
+        <View style={styles.actionSheetOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeActionSheet} />
+          <View
+            style={[
+              styles.actionSheetContainer,
+              { backgroundColor: colors.backgroundSecondary, paddingBottom: Math.max(insets.bottom + 16, 24) },
+            ]}
+          >
+            {selectedMessage && (
+              <View style={styles.actionSheetPreview}>
+                <Text style={[styles.actionSheetPreviewLabel, { color: colors.textSecondary }]}>已选消息</Text>
+                <Text style={[styles.actionSheetPreviewText, { color: colors.text }]} numberOfLines={2}>
+                  {selectedMessage.text}
+                </Text>
+              </View>
+            )}
+            {actionItems.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.actionSheetOption, !item.enabled && styles.actionSheetOptionDisabled]}
+                onPress={() => {
+                  if (!item.enabled) {
+                    return;
+                  }
+                  item.onPress();
+                }}
+                disabled={!item.enabled}
+              >
+                <Text
+                  style={[
+                    styles.actionSheetOptionText,
+                    { color: item.enabled ? colors.text : colors.textTertiary },
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -379,5 +498,38 @@ const styles = StyleSheet.create({
   sendButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  actionSheetOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  actionSheetContainer: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 8,
+  },
+  actionSheetPreview: {
+    marginBottom: 12,
+  },
+  actionSheetPreviewLabel: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  actionSheetPreviewText: {
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  actionSheetOption: {
+    paddingVertical: 14,
+  },
+  actionSheetOptionDisabled: {
+    opacity: 0.5,
+  },
+  actionSheetOptionText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

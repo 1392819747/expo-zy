@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -21,7 +20,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemeColors } from '../../../hooks/useThemeColors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -38,8 +36,8 @@ type MomentItem = {
   content: string;
   time: string;
   images?: string[];
-  likes: Array<{ id: string; name: string; avatar?: string }>;
-  comments: Array<{ id: string; name: string; content: string; replyTo?: string; avatar?: string }>;
+  likes: { id: string; name: string; avatar?: string }[];
+  comments: { id: string; name: string; content: string; replyTo?: string; avatar?: string }[];
   liked: boolean;
   location?: string;
 };
@@ -130,14 +128,21 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, positio
   onLike: () => void;
   onComment: () => void;
   liked: boolean;
-  position: { x: number; y: number };
+  position: { x: number; y: number } | null;
 }) {
   const insets = useSafeAreaInsets();
   const widthAnim = useRef(new Animated.Value(0)).current; // 胶囊宽度动画
   const opacity = useRef(new Animated.Value(0)).current;   // 内容淡入
+  const [shouldRender, setShouldRender] = useState(visible);
+  const menuWidth = 150;
+  const computedLeft = position
+    ? Math.min(Math.max(position.x - menuWidth - 12, 12), SCREEN_WIDTH - menuWidth - 12)
+    : 0;
+  const computedTop = position ? Math.max(60, position.y - 20) : 0;
 
   useEffect(() => {
     if (visible) {
+      setShouldRender(true);
       Animated.parallel([
         Animated.timing(widthAnim, {
           toValue: 150, // 调整胶囊最终宽度，从170减少到150以适应更窄的按钮
@@ -164,61 +169,81 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, positio
           easing: Easing.in(Easing.quad),
           useNativeDriver: false,
         }),
-      ]).start();
+      ]).start(({ finished }) => {
+        if (finished) {
+          setShouldRender(false);
+        }
+      });
     }
-  }, [visible]);
+  }, [visible, opacity, widthAnim]);
 
-  if (!visible) return null;
+  if (!shouldRender || !position) return null;
 
   return (
-    <Modal visible={visible} transparent={true} animationType="none" statusBarTranslucent={true} presentationStyle="overFullScreen">
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent', paddingBottom: isAndroid ? insets.bottom : 0 }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
-          <Animated.View style={[styles.menuCapsule, { width: widthAnim, position: 'absolute', left: position.x - 150 - 10, top: position.y - 5 }]} onStartShouldSetResponder={() => true} onResponderGrant={() => {}}>
-            <Animated.View style={[styles.menuRow, { opacity }]}>
-              <Pressable
-                style={styles.menuItem}
-                onPress={() => {
-                  onLike();
-                  onClose();
-                }}
-              >
-                <Ionicons
-                  name={liked ? "heart" : "heart-outline"}
-                  size={18}
-                  style={styles.menuIcon}
-                />
-                {/* 为点赞文字设置固定宽度，确保与评论按钮对称 */}
-                <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 35 }]}>
-                  {liked ? "取消" : "赞"}
-                </Text>
-              </Pressable>
+    <View style={[StyleSheet.absoluteFill, { paddingBottom: isAndroid ? insets.bottom : 0 }]} pointerEvents="box-none">
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        pointerEvents={visible ? 'auto' : 'none'}
+        onStartShouldSetResponder={() => {
+          onClose();
+          return false;
+        }}
+        onPress={onClose}
+      />
+      <Animated.View
+        style={[
+          styles.menuCapsule,
+          {
+            width: widthAnim,
+            position: 'absolute',
+            left: computedLeft,
+            top: computedTop,
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        <Animated.View style={[styles.menuRow, { opacity }]}>
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => {
+              onLike();
+              onClose();
+            }}
+          >
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={18}
+              style={styles.menuIcon}
+            />
+            {/* 为点赞文字设置固定宽度，确保与评论按钮对称 */}
+            <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 35 }]}>
+              {liked ? "取消" : "赞"}
+            </Text>
+          </Pressable>
 
-              <View style={styles.divider} />
+          <View style={styles.divider} />
 
-              <Pressable
-                style={styles.menuItem}
-                onPress={() => {
-                  onComment();
-                  onClose();
-                }}
-              >
-                <Ionicons name="chatbubble-outline" size={18} style={styles.menuIcon} />
-                {/* 为评论文字设置固定宽度，确保与点赞按钮对称 */}
-                <Text style={[styles.menuText, { width: 50 }]}>
-                  评论
-                </Text>
-              </Pressable>
-            </Animated.View>
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => {
+              onComment();
+              onClose();
+            }}
+          >
+            <Ionicons name="chatbubble-outline" size={18} style={styles.menuIcon} />
+            {/* 为评论文字设置固定宽度，确保与点赞按钮对称 */}
+            <Text style={[styles.menuText, { width: 50 }]}>
+              评论
+            </Text>
+          </Pressable>
+        </Animated.View>
 
-            {/* 右侧小三角，指向"..."按钮 */}
-            <View style={styles.arrowWrapper}>
-              <View style={styles.arrow} />
-            </View>
-          </Animated.View>
-        </Pressable>
-      </View>
-    </Modal>
+        {/* 右侧小三角，指向"..."按钮 */}
+        <View style={styles.arrowWrapper}>
+          <View style={styles.arrow} />
+        </View>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -244,33 +269,38 @@ const AvatarComponent = ({ userName, userAvatar }: { userName: string; userAvata
 };
 
 // 朋友圈动态卡片组件
-const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
+const MomentsCard = ({
+  momentData,
+  onLike,
+  onComment,
+  onImagePress,
+  isMenuOpen,
+  onOpenMenu,
+  onCloseMenu,
+}: {
   momentData: MomentItem;
   onLike: (id: string) => void;
   onComment: (id: string) => void;
-  onImagePress?: (imgUri: string) => void;
+  onImagePress?: (momentId: string, images: string[], imgUri: string, index: number) => void;
+  isMenuOpen: boolean;
+  onOpenMenu: (id: string, position: { x: number; y: number }) => void;
+  onCloseMenu: () => void;
 }) => {
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [liked, setLiked] = useState(momentData.liked);
-  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const moreBtnRef = useRef<View>(null);
 
   const toggleMenu = () => {
-    if (!menuVisible && moreBtnRef.current) {
-      moreBtnRef.current.measure((x, y, width, height, pageX, pageY) => {
-        setMenuPosition({ x: pageX, y: pageY });
-        setMenuVisible(true);
+    if (isMenuOpen) {
+      onCloseMenu();
+      return;
+    }
+
+    if (moreBtnRef.current) {
+      moreBtnRef.current.measureInWindow((x, y, width, height) => {
+        onOpenMenu(momentData.id, { x, y: y + height / 2 });
       });
-    } else {
-      setMenuVisible(false);
     }
   };
   
-  // 更新点赞状态
-  useEffect(() => {
-    setLiked(momentData.liked);
-  }, [momentData.liked]);
-
   return (
     <View style={styles.momentsCardWrapper}>
       <AvatarComponent userName={momentData.userName} userAvatar={momentData.userAvatar} />
@@ -283,7 +313,11 @@ const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
           </Text>
           {/* 图片网格 */}
           {momentData.images && momentData.images.length > 0 && (
-            <MomentsImg imgList={momentData.images} onImagePress={onImagePress} />
+            <MomentsImg
+              momentId={momentData.id}
+              imgList={momentData.images}
+              onImagePress={onImagePress}
+            />
           )}
         </View>
         
@@ -299,20 +333,6 @@ const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
             <TouchableOpacity ref={moreBtnRef} style={styles.moreBtn} onPress={toggleMenu}>
               <Ionicons name="ellipsis-horizontal" size={20} color="#888" />
             </TouchableOpacity>
-
-            <MomentsActionMenu
-              visible={menuVisible}
-              liked={liked}
-              position={menuPosition}
-              onClose={() => setMenuVisible(false)}
-              onLike={() => {
-                setLiked(!liked);
-                onLike(momentData.id);
-              }}
-              onComment={() => {
-                onComment(momentData.id);
-              }}
-            />
           </View>
         </View>
       </View>
@@ -321,20 +341,47 @@ const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
 };
 
 // 图片组件
-const MomentsImg = ({ imgList, onImagePress }: { imgList: string[]; onImagePress?: (imgUri: string) => void }) => {
+const MomentsImg = ({
+  momentId,
+  imgList,
+  onImagePress,
+}: {
+  momentId: string;
+  imgList: string[];
+  onImagePress?: (momentId: string, images: string[], imgUri: string, index: number) => void;
+}) => {
   if (!imgList || imgList.length === 0) return null;
+  const imageCount = imgList.length;
+
+  if (imageCount === 1) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.singleImageWrapper}
+        onPress={() => onImagePress && onImagePress(momentId, imgList, imgList[0], 0)}
+      >
+        <Image
+          source={{ uri: imgList[0] }}
+          style={styles.singleImage}
+          resizeMode="cover"
+          onError={() => console.log('图片加载失败:', imgList[0])}
+        />
+      </TouchableOpacity>
+    );
+  }
 
   return (
-    <View style={styles.imageGridContainer}>
+    <View style={styles.multiImageGrid}>
       {imgList.map((imgUri, index) => (
         <TouchableOpacity
           key={index}
-          style={styles.imageItem}
-          onPress={() => onImagePress && onImagePress(imgUri)}
+          activeOpacity={0.8}
+          style={styles.multiImageItem}
+          onPress={() => onImagePress && onImagePress(momentId, imgList, imgUri, index)}
         >
           <Image
             source={{ uri: imgUri }}
-            style={styles.imageInner}
+            style={styles.multiImage}
             resizeMode="cover"
             onError={() => console.log('图片加载失败:', imgUri)}
           />
@@ -348,13 +395,13 @@ const MomentsImg = ({ imgList, onImagePress }: { imgList: string[]; onImagePress
 const renderLikeAndComment = (moment: MomentItem) => {
   if (moment.likes.length === 0 && moment.comments.length === 0) return null;
 
-  const allItems: Array<{
+  const allItems: {
     type: 'like' | 'comment';
     id: string;
     content: string;
     name?: string;
     replyTo?: string;
-  }> = [];
+  }[] = [];
 
   if (moment.likes.length > 0) {
     allItems.push({
@@ -404,8 +451,6 @@ const renderLikeAndComment = (moment: MomentItem) => {
 };
 
 export default function MomentsScreen() {
-  const { colors, isDark } = useThemeColors();
-  const navigation = useNavigation();
   const router = useRouter();
   const [moments, setMoments] = useState<MomentItem[]>(mockMoments);
   const [scrollY] = useState(new Animated.Value(1));
@@ -413,7 +458,15 @@ export default function MomentsScreen() {
   const [commentModalVisible, setCommentModalVisible] = useState(false); // 添加评论模态框状态
   const [currentCommentId, setCurrentCommentId] = useState<string | null>(null); // 添加当前评论的动态ID
   const [commentText, setCommentText] = useState(''); // 添加评论文本状态
-  
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [previewImage, setPreviewImage] = useState<{
+    uri: string;
+    index: number;
+    images: string[];
+    momentId: string;
+  } | null>(null);
+
   // 头部透明度动画 - 用于控制顶部标题栏的显示/隐藏
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 100],
@@ -423,10 +476,17 @@ export default function MomentsScreen() {
 
   const currentUser = '当前用户';
 
+  const currentActiveMoment = useMemo(() => {
+    if (!activeMenuId) {
+      return null;
+    }
+    return moments.find(moment => moment.id === activeMenuId) ?? null;
+  }, [activeMenuId, moments]);
+
   const handleLike = (id: string) => {
     // 添加触觉反馈
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
     setMoments(prev => prev.map(moment => {
       if (moment.id === id) {
         const isLiked = moment.likes.some(like => like.name === currentUser);
@@ -451,29 +511,21 @@ export default function MomentsScreen() {
   const handleAddComment = (id: string, replyTo?: string) => {
     // 添加触觉反馈
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
+    setActiveMenuId(null);
     // 设置当前评论的动态ID并显示评论模态框
     setCurrentCommentId(id);
     setCommentModalVisible(true);
     setCommentText('');
-    
+
     console.log(`添加评论到动态: ${id}, 回复: ${replyTo || '动态'}`);
   };
 
-  const handleImagePress = (imgUri: string) => {
+  const handleImagePress = (momentId: string, images: string[], imgUri: string, index: number) => {
     // 添加触觉反馈
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    // 使用Alert来显示图片预览提示
-    Alert.alert(
-      '图片预览',
-      `图片地址: ${imgUri}\n\n(此版本暂不支持图片预览)`,
-      [
-        { text: '确定', style: 'default' }
-      ]
-    );
-    console.log('查看图片:', imgUri);
-    // 这里可以添加图片预览逻辑，比如打开模态框
+
+    setPreviewImage({ uri: imgUri, index, images, momentId });
   };
 
   // 提交评论
@@ -562,6 +614,11 @@ export default function MomentsScreen() {
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false }
         )}
+        onScrollBeginDrag={() => {
+          if (activeMenuId) {
+            setActiveMenuId(null);
+          }
+        }}
         showsVerticalScrollIndicator={false}
         // 为所有设备正确处理安全区域
         contentContainerStyle={{
@@ -596,6 +653,14 @@ export default function MomentsScreen() {
             onLike={handleLike}
             onComment={handleAddComment}
             onImagePress={handleImagePress}
+            isMenuOpen={activeMenuId === moment.id}
+            onOpenMenu={(id, position) => {
+              setMenuPosition(position);
+              setActiveMenuId(id);
+            }}
+            onCloseMenu={() => {
+              setActiveMenuId(null);
+            }}
           />
         ))}
         
@@ -644,6 +709,44 @@ export default function MomentsScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <MomentsActionMenu
+        visible={!!activeMenuId && !!menuPosition}
+        liked={!!currentActiveMoment?.liked}
+        position={menuPosition}
+        onClose={() => {
+          setActiveMenuId(null);
+        }}
+        onLike={() => {
+          if (activeMenuId) {
+            handleLike(activeMenuId);
+          }
+        }}
+        onComment={() => {
+          if (activeMenuId) {
+            handleAddComment(activeMenuId);
+          }
+        }}
+      />
+
+      <Modal
+        visible={!!previewImage}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <Pressable style={styles.imagePreviewOverlay} onPress={() => setPreviewImage(null)}>
+          {previewImage && (
+            <>
+              <Image source={{ uri: previewImage.uri }} style={styles.imagePreview} resizeMode="contain" />
+              <Text style={styles.imagePreviewIndex}>
+                {`${previewImage.index + 1}/${previewImage.images.length}`}
+              </Text>
+            </>
+          )}
+        </Pressable>
       </Modal>
     </View>
   );
@@ -799,19 +902,32 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
   },
-  imageGridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
+  singleImageWrapper: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    maxWidth: SCREEN_WIDTH * 0.7,
+    maxHeight: SCREEN_WIDTH * 0.75,
+    backgroundColor: '#f4f4f4',
     marginBottom: 8,
   },
-  imageItem: {
-    width: 80,
-    height: 80,
-    borderRadius: 4,
-    overflow: 'hidden',
+  singleImage: {
+    width: '100%',
+    aspectRatio: 4 / 3,
   },
-  imageInner: {
+  multiImageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  multiImageItem: {
+    borderRadius: 6,
+    overflow: 'hidden',
+    width: (SCREEN_WIDTH - 32 - 46 - 18) / 3,
+    height: (SCREEN_WIDTH - 32 - 46 - 18) / 3,
+    backgroundColor: '#f4f4f4',
+  },
+  multiImage: {
     width: '100%',
     height: '100%',
   },
@@ -1012,5 +1128,22 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 16,
     fontWeight: '500',
+  },
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  imagePreview: {
+    width: '100%',
+    height: '80%',
+  },
+  imagePreviewIndex: {
+    position: 'absolute',
+    bottom: 40,
+    color: '#fff',
+    fontSize: 14,
   },
 });

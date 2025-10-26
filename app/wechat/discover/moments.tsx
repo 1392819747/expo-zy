@@ -136,7 +136,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, positio
   const [shouldRender, setShouldRender] = useState(visible);
   const menuWidth = 150;
   const computedLeft = position
-    ? Math.min(Math.max(position.x - menuWidth - 10, 12), SCREEN_WIDTH - menuWidth - 12)
+    ? Math.min(Math.max(position.x - menuWidth - 12, 12), SCREEN_WIDTH - menuWidth - 12)
     : 0;
   const computedTop = position ? Math.max(60, position.y - 20) : 0;
 
@@ -183,9 +183,12 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, positio
     <View style={[StyleSheet.absoluteFill, { paddingBottom: isAndroid ? insets.bottom : 0 }]} pointerEvents="box-none">
       <Pressable
         style={StyleSheet.absoluteFill}
+        pointerEvents={visible ? 'auto' : 'none'}
+        onStartShouldSetResponder={() => {
+          onClose();
+          return false;
+        }}
         onPress={onClose}
-        onStartShouldSetResponder={() => true}
-        onResponderMove={onClose}
       />
       <Animated.View
         style={[
@@ -292,8 +295,8 @@ const MomentsCard = ({
     }
 
     if (moreBtnRef.current) {
-      moreBtnRef.current.measure((x, y, width, height, pageX, pageY) => {
-        onOpenMenu(momentData.id, { x: pageX + width, y: pageY + height / 2 });
+      moreBtnRef.current.measureInWindow((x, y, width, height) => {
+        onOpenMenu(momentData.id, { x, y: y + height / 2 });
       });
     }
   };

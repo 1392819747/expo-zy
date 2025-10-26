@@ -278,7 +278,7 @@ const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
           <Text style={styles.momentsCardTime}>{momentData.time}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {/* 使用新的三点菜单替换原有的操作按钮 */}
-            <View style={{ flex: 1 }} />
+            <View style={{ width: 20 }} />
             <View style={{ position: 'relative' }}>
               <TouchableOpacity style={styles.moreBtn} onPress={toggleMenu}>
                 <Ionicons name="ellipsis-horizontal" size={20} color="#888" />

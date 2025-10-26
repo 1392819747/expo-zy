@@ -377,17 +377,17 @@ const renderLikeAndComment = (moment: MomentItem) => {
           {item.type === 'like' ? (
             <View style={styles.likeSection}>
               <Ionicons name="heart-outline" size={16} color="#1877f2" style={styles.likeIcon} />
-              <Text style={[styles.likeText, { color: '#1877f2' }]}>
+              <Text style={[styles.likeText, { color: '#1877f2' }]} numberOfLines={0}>
                 {item.content}
               </Text>
             </View>
           ) : (
             item.type === 'comment' && (
               <TouchableOpacity style={styles.commentItem}>
-                <Text style={[styles.commentUser, { color: '#1877f2' }]}>
+                <Text style={[styles.commentUser, { color: '#1877f2' }]} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text style={[styles.commentText, { color: '#333' }]}>
+                <Text style={[styles.commentText, { color: '#333' }]} numberOfLines={0}>
                   {item.replyTo ? ` 回复 ${item.replyTo}` : ''}: {item.content}
                 </Text>
               </TouchableOpacity>
@@ -753,15 +753,24 @@ const styles = StyleSheet.create({
     borderTopColor: '#f0f0f0',
     borderStyle: 'solid',
     marginBottom: 8,
+    // 添加以下样式以防止内容超出卡片边界
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
   likeCommentItem: {
     marginBottom: 6,
+    // 添加以下样式以防止内容超出卡片边界
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
   likeSection: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 4,
     paddingHorizontal: 8,
+    // 添加以下样式以防止内容超出卡片边界
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
   likeIcon: {
     marginRight: 6,
@@ -769,20 +778,32 @@ const styles = StyleSheet.create({
   likeText: {
     fontSize: 15,
     lineHeight: 20,
+    // 添加以下样式以防止文本超出边界
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
   commentItem: {
     flexDirection: 'row',
     paddingVertical: 4,
     paddingHorizontal: 8,
+    // 添加以下样式以防止内容超出卡片边界
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
   commentUser: {
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '600',
+    // 添加以下样式以防止文本超出边界
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
   commentText: {
     fontSize: 15,
     lineHeight: 20,
+    // 添加以下样式以防止文本超出边界
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
   momentsCardBottom: {
     flexDirection: 'row',

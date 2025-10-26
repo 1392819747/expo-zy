@@ -138,7 +138,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
     if (visible) {
       Animated.parallel([
         Animated.timing(widthAnim, {
-          toValue: 170, // 调整胶囊最终宽度，从150增加到170以适应更宽的按钮
+          toValue: 150, // 调整胶囊最终宽度，从170减少到150以适应更窄的按钮
           duration: 180,
           easing: Easing.out(Easing.quad),
           useNativeDriver: false,
@@ -183,7 +183,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
             style={styles.menuIcon}
           />
           {/* 为点赞文字设置固定宽度，确保与评论按钮对称 */}
-          <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 50 }]}>
+          <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 40 }]}>
             {liked ? "取消" : "赞"}
           </Text>
         </Pressable>
@@ -199,7 +199,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
         >
           <Ionicons name="chatbubble-outline" size={18} style={styles.menuIcon} />
           {/* 为评论文字设置固定宽度，确保与点赞按钮对称 */}
-          <Text style={[styles.menuText, { width: 50 }]}>
+          <Text style={[styles.menuText, { width: 40 }]}>
             评论
           </Text>
         </Pressable>
@@ -220,7 +220,9 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
       <Pressable 
         style={StyleSheet.absoluteFill} 
         onPress={onClose}
-        // 确保遮罩能够正确捕获点击事件
+        // 添加事件处理确保点击遮罩能关闭菜单
+        onStartShouldSetResponder={() => true}
+        onResponderGrant={onClose}
         pointerEvents="auto"
       />
       {Capsule}

@@ -135,7 +135,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
     if (visible) {
       Animated.parallel([
         Animated.timing(widthAnim, {
-          toValue: 180, // 胶囊最终宽度
+          toValue: 150, // 调整胶囊最终宽度，从180减少到150
           duration: 180,
           easing: Easing.out(Easing.quad),
           useNativeDriver: false,
@@ -844,7 +844,6 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   menuRow: {
-    flex: 1,
     height: '100%',
     flexDirection: 'row',
     alignItems: 'center',

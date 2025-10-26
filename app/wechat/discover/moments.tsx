@@ -138,7 +138,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
     if (visible) {
       Animated.parallel([
         Animated.timing(widthAnim, {
-          toValue: 150, // 调整胶囊最终宽度，从170减少到150，因为我们移除了中间的空隙
+          toValue: 170, // 调整胶囊最终宽度，从150增加到170以适应更宽的按钮
           duration: 180,
           easing: Easing.out(Easing.quad),
           useNativeDriver: false,
@@ -182,8 +182,8 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
             size={18}
             style={styles.menuIcon}
           />
-          {/* 为点赞文字设置固定宽度，避免影响其他元素 */}
-          <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 40 }]}>
+          {/* 为点赞文字设置固定宽度，确保与评论按钮对称 */}
+          <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 50, textAlign: 'center' }]}>
             {liked ? "取消" : "赞"}
           </Text>
         </Pressable>
@@ -198,7 +198,10 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
           }}
         >
           <Ionicons name="chatbubble-outline" size={18} style={styles.menuIcon} />
-          <Text style={styles.menuText}>评论</Text>
+          {/* 为评论文字设置固定宽度，确保与点赞按钮对称 */}
+          <Text style={[styles.menuText, { width: 50, textAlign: 'center' }]}>
+            评论
+          </Text>
         </Pressable>
       </Animated.View>
 

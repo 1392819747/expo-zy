@@ -15,7 +15,10 @@ import {
   TouchableOpacity,
   View,
   Pressable,
-  Easing
+  Easing,
+  TextInput,
+  KeyboardAvoidingView,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -210,7 +213,13 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
   return (
     <>
       {/* 透明遮罩：点击空白处收起菜单 */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      <Pressable 
+        style={StyleSheet.absoluteFill} 
+        onPress={onClose}
+        // 防止事件冒泡
+        onStartShouldSetResponder={() => true}
+        onResponderGrant={onClose}
+      />
       {Capsule}
     </>
   );
@@ -406,6 +415,9 @@ export default function MomentsScreen() {
   const [moments, setMoments] = useState<MomentItem[]>(mockMoments);
   const [scrollY] = useState(new Animated.Value(1));
   const insets = useSafeAreaInsets();
+  const [commentModalVisible, setCommentModalVisible] = useState(false); // 添加评论模态框状态
+  const [currentCommentId, setCurrentCommentId] = useState<string | null>(null); // 添加当前评论的动态ID
+  const [commentText, setCommentText] = useState(''); // 添加评论文本状态
   
   // 头部透明度动画 - 用于控制顶部标题栏的显示/隐藏
   const headerOpacity = scrollY.interpolate({
@@ -445,9 +457,12 @@ export default function MomentsScreen() {
     // 添加触觉反馈
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    Alert.alert('评论', `添加评论到动态: ${id}`);
+    // 设置当前评论的动态ID并显示评论模态框
+    setCurrentCommentId(id);
+    setCommentModalVisible(true);
+    setCommentText('');
+    
     console.log(`添加评论到动态: ${id}, 回复: ${replyTo || '动态'}`);
-    // 这里可以添加评论功能，比如打开评论输入框
   };
 
   const handleImagePress = (imgUri: string) => {
@@ -464,6 +479,25 @@ export default function MomentsScreen() {
     );
     console.log('查看图片:', imgUri);
     // 这里可以添加图片预览逻辑，比如打开模态框
+  };
+
+  // 提交评论
+  const submitComment = () => {
+    if (commentText.trim() && currentCommentId) {
+      // 这里可以添加实际的评论提交逻辑
+      console.log(`提交评论: ${commentText} 到动态: ${currentCommentId}`);
+      Alert.alert('评论成功', `您已评论: ${commentText}`);
+      
+      // 关闭模态框并清空输入框
+      setCommentModalVisible(false);
+      setCommentText('');
+    }
+  };
+
+  // 取消评论
+  const cancelComment = () => {
+    setCommentModalVisible(false);
+    setCommentText('');
   };
 
   return (
@@ -575,6 +609,47 @@ export default function MomentsScreen() {
           如果需要底部间距，应该使用安全区域insets.bottom来处理 
         */}
       </ScrollView>
+
+      {/* 评论输入模态框 */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={commentModalVisible}
+        onRequestClose={cancelComment}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.commentModalContainer}
+        >
+          <View style={styles.commentModalOverlay} onStartShouldSetResponder={() => true} onResponderGrant={cancelComment}>
+            <View style={styles.commentModalContent} onStartShouldSetResponder={() => true}>
+              <View style={styles.commentInputContainer}>
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="请输入评论..."
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  multiline={true}
+                  autoFocus={true}
+                  onSubmitEditing={submitComment}
+                />
+                <View style={styles.commentButtonContainer}>
+                  <TouchableOpacity style={styles.commentCancelButton} onPress={cancelComment}>
+                    <Text style={styles.commentButtonText}>取消</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.commentSubmitButton, !commentText.trim() && styles.commentSubmitButtonDisabled]} 
+                    onPress={submitComment}
+                    disabled={!commentText.trim()}
+                  >
+                    <Text style={styles.commentButtonText}>发送</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -844,6 +919,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   menuRow: {
+    // 移除 flex: 1，改为使用 flexDirection: 'row' 和 alignItems: 'center'
     height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
@@ -890,5 +966,57 @@ const styles = StyleSheet.create({
     backgroundColor: '#2F2F2F',
     transform: [{ rotate: '45deg' }],
     borderRadius: 2,
+  },
+  // 评论模态框相关样式
+  commentModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  commentModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'flex-end',
+  },
+  commentModalContent: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  commentInputContainer: {
+    flexDirection: 'column',
+  },
+  commentInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  commentButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+  },
+  commentCancelButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginRight: 12,
+  },
+  commentSubmitButton: {
+    backgroundColor: '#1877f2',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 6,
+  },
+  commentSubmitButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  commentButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

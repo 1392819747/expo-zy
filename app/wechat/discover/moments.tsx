@@ -214,16 +214,15 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
 
   if (!visible) return null;
 
+  // 使用最简单的实现
   return (
     <>
       {/* 透明遮罩：点击空白处收起菜单 */}
       <Pressable 
-        style={styles.menuOverlay} 
+        style={StyleSheet.absoluteFill} 
         onPress={onClose}
-        pointerEvents="auto"
-      >
-        {Capsule}
-      </Pressable>
+      />
+      {Capsule}
     </>
   );
 }
@@ -297,7 +296,7 @@ const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
               </TouchableOpacity>
               
               {/* 菜单放在同一层，相对定位到"..."按钮左侧 */}
-              <View pointerEvents="box-none" style={{
+              <View style={{
                 position: 'absolute',
                 right: 42,
                 top: -2,
@@ -306,7 +305,6 @@ const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
                 alignItems: 'flex-end',
                 zIndex: 1000,
                 width: 200,
-                height: 50, // 添加固定高度
               }}>
                 <MomentsActionMenu
                   visible={menuVisible}
@@ -969,11 +967,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2F2F2F',
     transform: [{ rotate: '45deg' }],
     borderRadius: 2,
-  },
-  // 菜单遮罩样式
-  menuOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 999,
   },
   // 评论模态框相关样式
   commentModalContainer: {

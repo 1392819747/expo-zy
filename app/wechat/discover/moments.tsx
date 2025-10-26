@@ -2,23 +2,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
   Dimensions,
+  Easing,
   Image,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-  Pressable,
-  Easing,
-  TextInput,
-  KeyboardAvoidingView,
-  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -124,12 +124,13 @@ const mockMoments: MomentItem[] = [
 const WECHAT_GREEN = "#1AAD19";
 
 // 朋友圈操作菜单组件
-function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
+function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, position }: {
   visible: boolean;
   onClose: () => void;
   onLike: () => void;
   onComment: () => void;
   liked: boolean;
+  position: { x: number; y: number };
 }) {
   const widthAnim = useRef(new Animated.Value(0)).current; // 胶囊宽度动画
   const opacity = useRef(new Animated.Value(0)).current;   // 内容淡入
@@ -166,64 +167,57 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
     }
   }, [visible]);
 
-  // 胶囊主体
-  const Capsule = (
-    <Animated.View style={[styles.menuCapsule, { width: widthAnim }]}>
-      <Animated.View style={[styles.menuRow, { opacity }]}>
-        <Pressable
-          style={styles.menuItem}
-          onPress={() => {
-            onLike();
-            onClose();
-          }}
-        >
-          <Ionicons
-            name={liked ? "heart" : "heart-outline"}
-            size={18}
-            style={styles.menuIcon}
-          />
-          {/* 为点赞文字设置固定宽度，确保与评论按钮对称 */}
-          <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 40 }]}>
-            {liked ? "取消" : "赞"}
-          </Text>
-        </Pressable>
-
-        <View style={styles.divider} />
-
-        <Pressable
-          style={styles.menuItem}
-          onPress={() => {
-            onComment();
-            onClose();
-          }}
-        >
-          <Ionicons name="chatbubble-outline" size={18} style={styles.menuIcon} />
-          {/* 为评论文字设置固定宽度，确保与点赞按钮对称 */}
-          <Text style={[styles.menuText, { width: 40 }]}>
-            评论
-          </Text>
-        </Pressable>
-      </Animated.View>
-
-      {/* 右侧小三角，指向"..."按钮 */}
-      <View style={styles.arrowWrapper}>
-        <View style={styles.arrow} />
-      </View>
-    </Animated.View>
-  );
-
   if (!visible) return null;
 
-  // 使用最简单的实现
   return (
-    <>
-      {/* 透明遮罩：点击空白处收起菜单 */}
-      <Pressable 
-        style={StyleSheet.absoluteFill} 
-        onPress={onClose}
-      />
-      {Capsule}
-    </>
+    <Modal visible={visible} transparent={true} animationType="none" statusBarTranslucent={true} presentationStyle="overFullScreen">
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
+          <Animated.View style={[styles.menuCapsule, { width: widthAnim, position: 'absolute', left: position.x - 150 - 10, top: position.y - 5 }]} onStartShouldSetResponder={() => true} onResponderGrant={() => {}}>
+            <Animated.View style={[styles.menuRow, { opacity }]}>
+              <Pressable
+                style={styles.menuItem}
+                onPress={() => {
+                  onLike();
+                  onClose();
+                }}
+              >
+                <Ionicons
+                  name={liked ? "heart" : "heart-outline"}
+                  size={18}
+                  style={styles.menuIcon}
+                />
+                {/* 为点赞文字设置固定宽度，确保与评论按钮对称 */}
+                <Text style={[styles.menuText, liked && styles.menuTextLiked, { width: 35 }]}>
+                  {liked ? "取消" : "赞"}
+                </Text>
+              </Pressable>
+
+              <View style={styles.divider} />
+
+              <Pressable
+                style={styles.menuItem}
+                onPress={() => {
+                  onComment();
+                  onClose();
+                }}
+              >
+                <Ionicons name="chatbubble-outline" size={18} style={styles.menuIcon} />
+                {/* 为评论文字设置固定宽度，确保与点赞按钮对称 */}
+                <Text style={[styles.menuText, { width: 50 }]}>
+                  评论
+                </Text>
+              </Pressable>
+            </Animated.View>
+
+            {/* 右侧小三角，指向"..."按钮 */}
+            <View style={styles.arrowWrapper}>
+              <View style={styles.arrow} />
+            </View>
+          </Animated.View>
+        </Pressable>
+      </View>
+    </Modal>
   );
 }
 
@@ -257,8 +251,19 @@ const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
 }) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [liked, setLiked] = useState(momentData.liked);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const moreBtnRef = useRef<View>(null);
 
-  const toggleMenu = () => setMenuVisible((v) => !v);
+  const toggleMenu = () => {
+    if (!menuVisible && moreBtnRef.current) {
+      moreBtnRef.current.measure((x, y, width, height, pageX, pageY) => {
+        setMenuPosition({ x: pageX, y: pageY });
+        setMenuVisible(true);
+      });
+    } else {
+      setMenuVisible(false);
+    }
+  };
   
   // 更新点赞状态
   useEffect(() => {
@@ -290,36 +295,23 @@ const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {/* 使用新的三点菜单替换原有的操作按钮 */}
             <View style={{ width: 20 }} />
-            <View style={{ position: 'relative' }}>
-              <TouchableOpacity style={styles.moreBtn} onPress={toggleMenu}>
-                <Ionicons name="ellipsis-horizontal" size={20} color="#888" />
-              </TouchableOpacity>
-              
-              {/* 菜单放在同一层，相对定位到"..."按钮左侧 */}
-              <View style={{
-                position: 'absolute',
-                right: 42,
-                top: -2,
-                bottom: 0,
-                justifyContent: 'center',
-                alignItems: 'flex-end',
-                zIndex: 1000,
-                width: 200,
-              }}>
-                <MomentsActionMenu
-                  visible={menuVisible}
-                  liked={liked}
-                  onClose={() => setMenuVisible(false)}
-                  onLike={() => {
-                    setLiked(!liked);
-                    onLike(momentData.id);
-                  }}
-                  onComment={() => {
-                    onComment(momentData.id);
-                  }}
-                />
-              </View>
-            </View>
+            <TouchableOpacity ref={moreBtnRef} style={styles.moreBtn} onPress={toggleMenu}>
+              <Ionicons name="ellipsis-horizontal" size={20} color="#888" />
+            </TouchableOpacity>
+
+            <MomentsActionMenu
+              visible={menuVisible}
+              liked={liked}
+              position={menuPosition}
+              onClose={() => setMenuVisible(false)}
+              onLike={() => {
+                setLiked(!liked);
+                onLike(momentData.id);
+              }}
+              onComment={() => {
+                onComment(momentData.id);
+              }}
+            />
           </View>
         </View>
       </View>

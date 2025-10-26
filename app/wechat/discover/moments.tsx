@@ -209,20 +209,23 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
     </Animated.View>
   );
 
-  if (!visible) return null;
-
   return (
-    <>
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="none"
+      onRequestClose={onClose}
+    >
       {/* 透明遮罩：点击空白处收起菜单 */}
       <Pressable 
-        style={StyleSheet.absoluteFill} 
+        style={styles.menuModalOverlay} 
         onPress={onClose}
-        // 防止事件冒泡
-        onStartShouldSetResponder={() => true}
-        onResponderGrant={onClose}
-      />
-      {Capsule}
-    </>
+      >
+        <View style={styles.menuContainer}>
+          {Capsule}
+        </View>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -294,30 +297,19 @@ const MomentsCard = ({ momentData, onLike, onComment, onImagePress }: {
                 <Ionicons name="ellipsis-horizontal" size={20} color="#888" />
               </TouchableOpacity>
               
-              {/* 菜单放在同一层，相对定位到"..."按钮左侧 */}
-              <View pointerEvents="box-none" style={{
-                position: 'absolute',
-                right: 42,
-                top: -2,
-                bottom: 0,
-                justifyContent: 'center',
-                alignItems: 'flex-end',
-                zIndex: 1000,
-                width: 200,
-              }}>
-                <MomentsActionMenu
-                  visible={menuVisible}
-                  liked={liked}
-                  onClose={() => setMenuVisible(false)}
-                  onLike={() => {
-                    setLiked(!liked);
-                    onLike(momentData.id);
-                  }}
-                  onComment={() => {
-                    onComment(momentData.id);
-                  }}
-                />
-              </View>
+              {/* 使用 Modal 方式显示菜单 */}
+              <MomentsActionMenu
+                visible={menuVisible}
+                liked={liked}
+                onClose={() => setMenuVisible(false)}
+                onLike={() => {
+                  setLiked(!liked);
+                  onLike(momentData.id);
+                }}
+                onComment={() => {
+                  onComment(momentData.id);
+                }}
+              />
             </View>
           </View>
         </View>
@@ -967,6 +959,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#2F2F2F',
     transform: [{ rotate: '45deg' }],
     borderRadius: 2,
+  },
+  // 菜单模态框相关样式
+  menuModalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  menuContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   // 评论模态框相关样式
   commentModalContainer: {

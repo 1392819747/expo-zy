@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    // 移除背景色
+    backgroundColor: '#fff',
   },
   headerCover: {
     height: 360,
@@ -529,7 +529,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, positio
   liked: boolean;
   position: { x: number; y: number } | null;
 }) {
-  // 直接从模块级别获取 insets，不在组件内部重新声明
+  const insets = useSafeAreaInsets();
   const menuWidth = 150;
 
   // 使用Reanimated动画值
@@ -537,11 +537,11 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, positio
   const [menuOpacity, setMenuOpacity] = useState(0);
   const [menuScale, setMenuScale] = useState(0.8);
 
-  // 计算菜单位置
+  // 计算菜单位置 - 根据平台调整菜单位置
   const computedLeft = position
     ? Math.min(Math.max(position.x - menuWidth - 12, 12), SCREEN_WIDTH - menuWidth - 12)
     : 0;
-  const computedTop = position ? Math.max(60, position.y - 20) : 0;
+  const computedTop = position ? Math.max(60, position.y + (isAndroid ? 20 : -20)) : 0; // 安卓向下偏移20，iOS向上偏移20
 
   // Reanimated样式
   const menuStyle = useAnimatedStyle(() => ({
@@ -592,7 +592,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked, positio
 
   return (
     <GestureDetector gesture={combinedGesture}>
-      <View style={[StyleSheet.absoluteFill, { paddingBottom: isAndroid ? 20 : 0 }]} pointerEvents="box-none">
+      <View style={[StyleSheet.absoluteFill, { paddingBottom: isAndroid ? insets.bottom : 0 }]} pointerEvents="box-none">
         {/* 全屏手势检测区域 */}
         <View style={[StyleSheet.absoluteFill, { pointerEvents: 'auto' }]} />
 
@@ -1061,7 +1061,9 @@ function MomentsScreen() {
           // 封面区域不添加任何顶部padding，延伸到屏幕顶部
           paddingTop: 0,
           // 背景色只应用到内容区域，封面区域保持透明
-          backgroundColor: 'transparent',
+          backgroundColor: '#fff',
+          // 底部安全区使用与背景相同的颜色
+          borderBottomWidth: 0,
         }}
       >
         {/* 添加透明的TouchableWithoutFeedback来检测点击 */}

@@ -138,7 +138,7 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
     if (visible) {
       Animated.parallel([
         Animated.timing(widthAnim, {
-          toValue: 150, // 调整胶囊最终宽度，从180减少到150
+          toValue: 170, // 调整胶囊最终宽度，从150增加到170以适应新增的空间
           duration: 180,
           easing: Easing.out(Easing.quad),
           useNativeDriver: false,
@@ -186,6 +186,9 @@ function MomentsActionMenu({ visible, onClose, onLike, onComment, liked }: {
             {liked ? "取消" : "赞"}
           </Text>
         </Pressable>
+
+        {/* 在点赞和评论按钮之间添加更多空间 */}
+        <View style={{ width: 20 }} />
 
         <View style={styles.divider} />
 

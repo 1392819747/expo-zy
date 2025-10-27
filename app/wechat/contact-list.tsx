@@ -2,18 +2,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
-  FlatList,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    FlatList,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { Contact, getAllInitials, groupContactsByInitial, mockContacts, searchContacts } from '../../models/contacts';
 
 const ContactListScreen = () => {
+  const { colors, isDark } = useThemeColors();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const router = useRouter();
@@ -90,15 +93,18 @@ const ContactListScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
       {/* 搜索框 */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={16} color="#999" style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.searchInputContainer, {
+          backgroundColor: isDark ? 'rgba(118, 118, 128, 0.24)' : 'rgba(142, 142, 147, 0.12)',
+        }]}>
+          <Ionicons name="search" size={18} color={isDark ? 'rgba(235, 235, 245, 0.6)' : 'rgba(60, 60, 67, 0.6)'} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
-            placeholder="搜索联系人"
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="搜索"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor="#999"
+            placeholderTextColor={isDark ? 'rgba(235, 235, 245, 0.6)' : 'rgba(60, 60, 67, 0.6)'}
+            returnKeyType="search"
           />
         </View>
       </View>
@@ -141,31 +147,44 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5', // 微信风格的浅灰色背景
   },
   searchContainer: {
-    backgroundColor: '#f5f5f5', // 与容器背景一致
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e5e5',
+    paddingVertical: 12,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff', // 搜索框保持白色
-    borderRadius: 6,
+    borderRadius: 10,
     paddingHorizontal: 10,
-    height: 36,
-    borderWidth: 1,
-    borderColor: '#e5e5e5', // 添加边框
+    height: 40,
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 17,
+    fontWeight: '400',
     color: '#333',
     padding: 0,
-    marginLeft: 8,
+    margin: 0,
+    includeFontPadding: false,
+    ...Platform.select({
+      android: {
+        textAlignVertical: 'center',
+        paddingTop: 10,
+        paddingBottom: 0,
+        paddingVertical: 0,
+        paddingHorizontal: 0,
+        height: 40,
+      },
+      ios: {
+        paddingVertical: 0,
+        paddingHorizontal: 0,
+        paddingTop: -10,
+        paddingBottom: 0,
+        height: 40,
+      }
+    })
   },
   listContainer: {
     flex: 1,

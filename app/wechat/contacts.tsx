@@ -1,28 +1,27 @@
-import React, { useState, useMemo, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SectionList,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  TextInput,
-  Alert,
-  Animated,
-  TouchableWithoutFeedback,
-  Platform
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Animated,
+  Platform,
+  SafeAreaView,
+  SectionList,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { 
-  Contact, 
-  mockContacts, 
-  groupContactsByInitial, 
-  getAllInitials, 
-  searchContacts,
-  contactFeatures 
+import {
+  Contact,
+  contactFeatures,
+  getAllInitials,
+  groupContactsByInitial,
+  mockContacts,
+  searchContacts
 } from '../../models/contacts';
 
 const ContactsScreen = () => {
@@ -37,9 +36,9 @@ const ContactsScreen = () => {
     const filtered = searchContacts(mockContacts, searchQuery);
     const grouped = groupContactsByInitial(filtered);
     const initialsList = getAllInitials(filtered);
-    
-    return { 
-      groupedContacts: grouped, 
+
+    return {
+      groupedContacts: grouped,
       initials: initialsList,
       filteredContacts: filtered
     };
@@ -47,7 +46,7 @@ const ContactsScreen = () => {
 
   // 渲染功能项
   const renderFeatureItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.featureItem, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight }]}
       onPress={() => {
         if (item.route) {
@@ -57,8 +56,8 @@ const ContactsScreen = () => {
         }
       }}
     >
-      <View style={[styles.featureIcon, { backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1 }]}>
-        <Ionicons name={item.icon as any} size={20} color={colors.primary} />
+      <View style={[styles.avatar, { backgroundColor: colors.avatarBackground }]}>
+        <Ionicons name={item.icon as any} size={20} color="#ffffff" />
       </View>
       <Text style={[styles.featureName, { color: colors.text }]}>{item.name}</Text>
       <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
@@ -67,7 +66,7 @@ const ContactsScreen = () => {
 
   // 渲染联系人项
   const renderContactItem = ({ item }: { item: Contact }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.contactItem, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight }]}
       onPress={() => router.push({
         pathname: '/wechat/contact-detail',
@@ -133,21 +132,20 @@ const ContactsScreen = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      
+
       {/* 搜索框 */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight }]}>
-        <View style={[styles.searchInputContainer, { 
-          backgroundColor: colors.background, 
-          borderColor: colors.border,
-          borderWidth: 1,
+      <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.searchInputContainer, {
+          backgroundColor: isDark ? 'rgba(118, 118, 128, 0.24)' : 'rgba(142, 142, 147, 0.12)',
         }]}>
-          <Ionicons name="search" size={16} color={colors.textTertiary} style={styles.searchIcon} />
+          <Ionicons name="search" size={18} color={isDark ? 'rgba(235, 235, 245, 0.6)' : 'rgba(60, 60, 67, 0.6)'} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="搜索联系人"
+            placeholder="搜索"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor={colors.placeholder}
+            placeholderTextColor={isDark ? 'rgba(235, 235, 245, 0.6)' : 'rgba(60, 60, 67, 0.6)'}
+            returnKeyType="search"
           />
         </View>
       </View>
@@ -157,20 +155,20 @@ const ContactsScreen = () => {
         {contactFeatures.map((feature, index) => (
           <View key={feature.id}>
             {renderFeatureItem({ item: feature })}
-            {index < contactFeatures.length - 1 && <View style={[styles.separator, { backgroundColor: colors.borderLight, marginLeft: 64 }]} />}
+            {index < contactFeatures.length - 1 && <View style={[styles.separator, { backgroundColor: colors.borderLight, marginLeft: 68 }]} />}
           </View>
         ))}
       </View>
 
       {/* 联系人列表 */}
       <View style={styles.listContainer}>
-        <View style={[styles.contactsHeader, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.borderLight }]}>
+        <View style={[styles.contactsHeader, { backgroundColor: colors.backgroundSecondary, borderBottomColor: 'transparent' }]}>
           <Text style={[styles.contactsCount, { color: colors.textSecondary }]}>通讯录 ({totalContacts})</Text>
           <TouchableOpacity style={styles.addContactButton} onPress={() => router.push('/wechat/contact-add' as any)}>
             <Ionicons name="person-add" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
-        
+
         {sections.length > 0 ? (
           <SectionList
             ref={sectionListRef}
@@ -202,33 +200,40 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
+    paddingVertical: 12,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 6,
+    borderRadius: 10,
     paddingHorizontal: 10,
-    height: 36,
+    height: 40,
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    padding: 0,  // 重置默认padding
-    margin: 0,   // 重置默认margin
-    textAlignVertical: 'center', // 垂直居中文字
-    includeFontPadding: false, // 防止字体padding影响布局
+    fontSize: 17,
+    fontWeight: '400',
+    padding: 0,
+    margin: 0,
+    includeFontPadding: false,
     ...Platform.select({
       android: {
-        textAlignVertical: 'center', // 确保安卓上文字垂直居中
-        padding: 0,
+        textAlignVertical: 'center',
+        paddingTop: 10,
+        paddingBottom: 0,
+        paddingVertical: 0,
+        paddingHorizontal: 0,
+        height: 40,
       },
       ios: {
-        padding: 0,
+        paddingVertical: 0,
+        paddingHorizontal: 0,
+        paddingTop: -10,
+        paddingBottom: 0,
+        height: 40,
       }
     })
   },
@@ -240,12 +245,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: 0.5,
+    borderBottomWidth: 0,
   },
   featureIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
+    width: 40,
+    height: 40,
+    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -256,7 +261,7 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 0.5,
-    marginLeft: 64,
+    marginLeft: 68,
   },
   listContainer: {
     flex: 1,

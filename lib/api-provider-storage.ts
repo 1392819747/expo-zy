@@ -18,7 +18,6 @@ export interface ApiProvider {
   status: ApiProviderStatus;
   expiresAt?: string;
   notes?: string;
-  secureStore?: boolean;
 }
 
 const PROVIDERS_KEY = 'zhiyin.api.providers';
@@ -56,7 +55,6 @@ export function createEmptyProvider(partial: Partial<ApiProvider> = {}): ApiProv
     status: partial.status ?? 'unknown',
     expiresAt: partial.expiresAt,
     notes: partial.notes,
-    secureStore: partial.secureStore ?? false,
   };
 }
 

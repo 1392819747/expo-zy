@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   ApiProvider,
   deleteApiProvider,
@@ -21,12 +22,253 @@ import {
   setActiveApiProvider,
 } from '@/lib/api-provider-storage';
 
+type ThemeColors = {
+  background: string;
+  headerButtonBackground: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  accent: string;
+  icon: string;
+  iconMuted: string;
+  searchBackground: string;
+  searchPlaceholder: string;
+  cardBackground: string;
+  cardBorder: string;
+  providerIconBackground: string;
+  emptyText: string;
+  footerText: string;
+  deleteBackground: string;
+  switchTrackOff: string;
+  switchTrackOn: string;
+  switchThumb: string;
+  createButtonBackground: string;
+  createButtonText: string;
+};
+
+const getThemeColors = (isDark: boolean): ThemeColors =>
+  isDark
+    ? {
+        background: '#07090f',
+        headerButtonBackground: '#111827',
+        textPrimary: '#f8fafc',
+        textSecondary: '#94a3b8',
+        textMuted: '#64748b',
+        accent: '#3b82f6',
+        icon: '#f8fafc',
+        iconMuted: '#64748b',
+        searchBackground: '#0f172a',
+        searchPlaceholder: '#475569',
+        cardBackground: '#0b1120',
+        cardBorder: '#1f2937',
+        providerIconBackground: '#0f172a',
+        emptyText: '#64748b',
+        footerText: '#64748b',
+        deleteBackground: '#1f2937',
+        switchTrackOff: '#1e293b',
+        switchTrackOn: '#3b82f6',
+        switchThumb: '#0f172a',
+        createButtonBackground: '#f8fafc',
+        createButtonText: '#0f172a',
+      }
+    : {
+        background: '#f8fafc',
+        headerButtonBackground: '#e2e8f0',
+        textPrimary: '#0f172a',
+        textSecondary: '#475569',
+        textMuted: '#64748b',
+        accent: '#2563eb',
+        icon: '#0f172a',
+        iconMuted: '#94a3b8',
+        searchBackground: '#e2e8f0',
+        searchPlaceholder: '#64748b',
+        cardBackground: '#ffffff',
+        cardBorder: '#e2e8f0',
+        providerIconBackground: '#eff6ff',
+        emptyText: '#94a3b8',
+        footerText: '#64748b',
+        deleteBackground: '#e2e8f0',
+        switchTrackOff: '#cbd5f5',
+        switchTrackOn: '#2563eb',
+        switchThumb: '#ffffff',
+        createButtonBackground: '#2563eb',
+        createButtonText: '#ffffff',
+      };
+
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+      paddingHorizontal: 16,
+      paddingBottom: 24,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 24,
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: theme.headerButtonBackground,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerTitle: {
+      color: theme.textPrimary,
+      fontSize: 22,
+      fontWeight: '700',
+    },
+    editButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+      backgroundColor: theme.headerButtonBackground,
+    },
+    editButtonText: {
+      color: theme.textPrimary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.searchBackground,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 24,
+    },
+    searchInput: {
+      marginLeft: 8,
+      flex: 1,
+      color: theme.textPrimary,
+      fontSize: 15,
+    },
+    content: {
+      flex: 1,
+    },
+    sectionTitle: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      marginBottom: 12,
+    },
+    emptyText: {
+      color: theme.emptyText,
+      fontSize: 14,
+      textAlign: 'center',
+      marginTop: 32,
+    },
+    providerCard: {
+      backgroundColor: theme.cardBackground,
+      borderRadius: 20,
+      padding: 18,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+    },
+    providerCardActive: {
+      borderColor: theme.accent,
+    },
+    providerHeader: {
+      flexDirection: 'row',
+    },
+    providerIconWrapper: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: theme.providerIconBackground,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    providerInfo: {
+      flex: 1,
+    },
+    providerTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 6,
+    },
+    providerName: {
+      color: theme.textPrimary,
+      fontSize: 18,
+      fontWeight: '700',
+      marginRight: 8,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      marginRight: 4,
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    providerMeta: {
+      color: theme.textMuted,
+      fontSize: 13,
+      marginBottom: 4,
+    },
+    providerFooterRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 8,
+    },
+    providerFooterText: {
+      color: theme.footerText,
+      fontSize: 12,
+    },
+    cardActions: {
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      marginLeft: 12,
+    },
+    deleteButton: {
+      marginTop: 12,
+      padding: 6,
+      borderRadius: 12,
+      backgroundColor: theme.deleteBackground,
+    },
+    createButton: {
+      marginTop: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.createButtonBackground,
+      paddingVertical: 16,
+      borderRadius: 18,
+      gap: 6,
+    },
+    createButtonText: {
+      color: theme.createButtonText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  });
+
 export default function ApiSettingsScreen() {
   const router = useRouter();
   const [providers, setProviders] = useState<ApiProvider[]>([]);
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const theme = useMemo(() => getThemeColors(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const load = useCallback(async () => {
     const { providers: loadedProviders, activeProviderId: active } = await loadApiProviders();
@@ -91,7 +333,7 @@ export default function ApiSettingsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color="#fff" />
+          <Ionicons name="chevron-back" size={22} color={theme.icon} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>选择配置</Text>
         <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing((prev) => !prev)}>
@@ -100,11 +342,11 @@ export default function ApiSettingsScreen() {
       </View>
 
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={18} color="#64748b" />
+        <Ionicons name="search" size={18} color={theme.iconMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="搜索配置"
-          placeholderTextColor="#475569"
+          placeholderTextColor={theme.searchPlaceholder}
           value={search}
           onChangeText={setSearch}
         />
@@ -127,12 +369,16 @@ export default function ApiSettingsScreen() {
               >
                 <View style={styles.providerHeader}>
                   <View style={styles.providerIconWrapper}>
-                    <Ionicons name={provider.provider === 'gemini' ? 'sparkles' : 'planet'} size={20} color="#60a5fa" />
+                    <Ionicons
+                      name={provider.provider === 'gemini' ? 'sparkles' : 'planet'}
+                      size={20}
+                      color={theme.accent}
+                    />
                   </View>
                   <View style={styles.providerInfo}>
                     <View style={styles.providerTitleRow}>
                       <Text style={styles.providerName}>{provider.name}</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: `${statusMeta.color}1a` }]}> 
+                      <View style={[styles.statusBadge, { backgroundColor: `${statusMeta.color}1a` }]}>
                         <View style={[styles.statusDot, { backgroundColor: statusMeta.color }]} />
                         <Text style={[styles.statusText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
                       </View>
@@ -157,11 +403,11 @@ export default function ApiSettingsScreen() {
                     <Switch
                       value={isActive}
                       onValueChange={(value) => handleToggleActive(provider, value)}
-                      trackColor={{ false: '#1e293b', true: '#3b82f6' }}
-                      thumbColor="#0f172a"
-                      ios_backgroundColor="#1e293b"
+                      trackColor={{ false: theme.switchTrackOff, true: theme.switchTrackOn }}
+                      thumbColor={theme.switchThumb}
+                      ios_backgroundColor={theme.switchTrackOff}
                     />
-                    <Ionicons name="chevron-forward" size={18} color="#475569" />
+                    <Ionicons name="chevron-forward" size={18} color={theme.iconMuted} />
                     {isEditing && (
                       <TouchableOpacity
                         style={styles.deleteButton}
@@ -179,7 +425,7 @@ export default function ApiSettingsScreen() {
       </ScrollView>
 
       <TouchableOpacity style={styles.createButton} onPress={handleCreate}>
-        <Ionicons name="add" size={20} color="#0f172a" />
+        <Ionicons name="add" size={20} color={theme.createButtonText} />
         <Text style={styles.createButtonText}>新建配置</Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -193,165 +439,3 @@ function formatDate(input: string | number) {
   }
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#07090f',
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#111827',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    color: '#f8fafc',
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#111827',
-  },
-  editButtonText: {
-    color: '#e2e8f0',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 24,
-  },
-  searchInput: {
-    marginLeft: 8,
-    flex: 1,
-    color: '#e2e8f0',
-    fontSize: 15,
-  },
-  content: {
-    flex: 1,
-  },
-  sectionTitle: {
-    color: '#94a3b8',
-    fontSize: 13,
-    marginBottom: 12,
-  },
-  emptyText: {
-    color: '#64748b',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 32,
-  },
-  providerCard: {
-    backgroundColor: '#0b1120',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  providerCardActive: {
-    borderColor: '#3b82f6',
-  },
-  providerHeader: {
-    flexDirection: 'row',
-  },
-  providerIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#0f172a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  providerInfo: {
-    flex: 1,
-  },
-  providerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  providerName: {
-    color: '#f8fafc',
-    fontSize: 18,
-    fontWeight: '700',
-    marginRight: 8,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  providerMeta: {
-    color: '#94a3b8',
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  providerFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  providerFooterText: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  cardActions: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginLeft: 12,
-  },
-  deleteButton: {
-    marginTop: 12,
-    padding: 6,
-    borderRadius: 12,
-    backgroundColor: '#1f2937',
-  },
-  createButton: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f8fafc',
-    paddingVertical: 16,
-    borderRadius: 18,
-  },
-  createButtonText: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '700',
-    marginLeft: 6,
-  },
-});

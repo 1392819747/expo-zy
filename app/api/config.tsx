@@ -1,14 +1,14 @@
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   ApiProvider,
   ApiProviderStatus,
@@ -31,6 +32,355 @@ const PROVIDER_OPTIONS: { id: ApiProviderVendor; label: string }[] = [
   { id: 'gemini', label: 'Gemini' },
 ];
 
+type ThemeColors = {
+  background: string;
+  card: string;
+  border: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  accent: string;
+  inputBackground: string;
+  placeholder: string;
+  headerButton: string;
+  icon: string;
+  iconMuted: string;
+  segmentBackground: string;
+  segmentActiveBackground: string;
+  segmentText: string;
+  segmentTextActive: string;
+  primaryButtonBackground: string;
+  primaryButtonText: string;
+  secondaryButtonBackground: string;
+  secondaryButtonBorder: string;
+  secondaryButtonText: string;
+  utilityBackground: string;
+  utilityBorder: string;
+  utilityText: string;
+  sliderTrack: string;
+  sliderThumb: string;
+  modelOptionBackground: string;
+  modelOptionSelectedBackground: string;
+  modelOptionText: string;
+  modelOptionSelectedText: string;
+  errorText: string;
+};
+
+const getThemeColors = (isDark: boolean): ThemeColors =>
+  isDark
+    ? {
+        background: '#06070b',
+        card: '#0b1120',
+        border: '#1f2937',
+        textPrimary: '#f8fafc',
+        textSecondary: '#cbd5f5',
+        textMuted: '#64748b',
+        accent: '#3b82f6',
+        inputBackground: '#07090f',
+        placeholder: '#475569',
+        headerButton: '#0b1120',
+        icon: '#e2e8f0',
+        iconMuted: '#94a3b8',
+        segmentBackground: '#07090f',
+        segmentActiveBackground: '#1d4ed8',
+        segmentText: '#64748b',
+        segmentTextActive: '#e2e8f0',
+        primaryButtonBackground: '#f8fafc',
+        primaryButtonText: '#0f172a',
+        secondaryButtonBackground: '#081226',
+        secondaryButtonBorder: '#1e40af',
+        secondaryButtonText: '#38bdf8',
+        utilityBackground: '#0f172a',
+        utilityBorder: '#1f2937',
+        utilityText: '#94a3b8',
+        sliderTrack: '#1f2937',
+        sliderThumb: '#38bdf8',
+        modelOptionBackground: '#0f172a',
+        modelOptionSelectedBackground: '#1e40af',
+        modelOptionText: '#cbd5f5',
+        modelOptionSelectedText: '#f8fafc',
+        errorText: '#f87171',
+      }
+    : {
+        background: '#f8fafc',
+        card: '#ffffff',
+        border: '#e2e8f0',
+        textPrimary: '#0f172a',
+        textSecondary: '#1e293b',
+        textMuted: '#64748b',
+        accent: '#2563eb',
+        inputBackground: '#f1f5f9',
+        placeholder: '#94a3b8',
+        headerButton: '#e2e8f0',
+        icon: '#0f172a',
+        iconMuted: '#64748b',
+        segmentBackground: '#e2e8f0',
+        segmentActiveBackground: '#2563eb',
+        segmentText: '#1f2937',
+        segmentTextActive: '#ffffff',
+        primaryButtonBackground: '#2563eb',
+        primaryButtonText: '#ffffff',
+        secondaryButtonBackground: '#e0f2fe',
+        secondaryButtonBorder: '#bfdbfe',
+        secondaryButtonText: '#1d4ed8',
+        utilityBackground: '#f8fafc',
+        utilityBorder: '#e2e8f0',
+        utilityText: '#475569',
+        sliderTrack: '#cbd5f5',
+        sliderThumb: '#2563eb',
+        modelOptionBackground: '#f1f5f9',
+        modelOptionSelectedBackground: '#dbeafe',
+        modelOptionText: '#1f2937',
+        modelOptionSelectedText: '#1d4ed8',
+        errorText: '#dc2626',
+      };
+
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    content: {
+      padding: 20,
+      paddingBottom: 120,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 24,
+      gap: 16,
+    },
+    headerButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 16,
+      backgroundColor: theme.headerButton,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    title: {
+      color: theme.textPrimary,
+      fontSize: 24,
+      fontWeight: '800',
+    },
+    subtitle: {
+      color: theme.textMuted,
+      fontSize: 14,
+      marginTop: 6,
+    },
+    card: {
+      backgroundColor: theme.card,
+      borderRadius: 24,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: theme.border,
+      gap: 16,
+    },
+    label: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    segmentedControl: {
+      flexDirection: 'row',
+      backgroundColor: theme.segmentBackground,
+      borderRadius: 18,
+      padding: 6,
+    },
+    segmentButton: {
+      flex: 1,
+      borderRadius: 14,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    segmentButtonActive: {
+      backgroundColor: theme.segmentActiveBackground,
+    },
+    segmentText: {
+      color: theme.segmentText,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    segmentTextActive: {
+      color: theme.segmentTextActive,
+    },
+    input: {
+      backgroundColor: theme.inputBackground,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: Platform.OS === 'ios' ? 14 : 12,
+      color: theme.textPrimary,
+      fontSize: 15,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    secretInput: {
+      fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    },
+    fetchModelsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    fetchButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: theme.secondaryButtonBackground,
+      borderWidth: 1,
+      borderColor: theme.secondaryButtonBorder,
+    },
+    fetchButtonText: {
+      color: theme.secondaryButtonText,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    fetchError: {
+      flex: 1,
+      color: theme.errorText,
+      fontSize: 13,
+    },
+    modelPicker: {
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.inputBackground,
+      padding: 6,
+      gap: 6,
+    },
+    modelOption: {
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      backgroundColor: theme.modelOptionBackground,
+    },
+    modelOptionSelected: {
+      backgroundColor: theme.modelOptionSelectedBackground,
+    },
+    modelOptionText: {
+      color: theme.modelOptionText,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    modelOptionTextSelected: {
+      color: theme.modelOptionSelectedText,
+    },
+    sliderLabelRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    sliderValue: {
+      color: theme.textPrimary,
+      fontWeight: '700',
+    },
+    sliderRow: {
+      paddingHorizontal: 4,
+    },
+    slider: {
+      width: '100%',
+      height: 40,
+    },
+    notesInput: {
+      height: 96,
+    },
+    statusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginTop: 4,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      marginRight: 6,
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    statusDescription: {
+      color: theme.textMuted,
+      fontSize: 12,
+    },
+    primaryActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    primaryButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: theme.primaryButtonBackground,
+      borderRadius: 16,
+      paddingVertical: 14,
+    },
+    primaryButtonDisabled: {
+      opacity: 0.7,
+    },
+    primaryButtonText: {
+      color: theme.primaryButtonText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    secondaryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 18,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.secondaryButtonBorder,
+      height: 52,
+      justifyContent: 'center',
+      backgroundColor: theme.secondaryButtonBackground,
+    },
+    secondaryButtonText: {
+      color: theme.secondaryButtonText,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    utilityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    utilityButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: theme.utilityBackground,
+      borderWidth: 1,
+      borderColor: theme.utilityBorder,
+    },
+    utilityText: {
+      color: theme.utilityText,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+  });
+
 export default function ApiConfigScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -39,15 +389,22 @@ export default function ApiConfigScreen() {
     return Array.isArray(params.id) ? params.id[0] : params.id;
   }, [params.id]);
 
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const theme = useMemo(() => getThemeColors(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [initialProvider, setInitialProvider] = useState<ApiProvider | null>(null);
   const [name, setName] = useState('');
   const [provider, setProvider] = useState<ApiProviderVendor>('openai');
   const [model, setModel] = useState('');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(1024);
-  const [secureStore, setSecureStore] = useState(false);
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<ApiProviderStatus>('unknown');
   const [lastConnectedAt, setLastConnectedAt] = useState<string | undefined>(undefined);
@@ -67,7 +424,6 @@ export default function ApiConfigScreen() {
         setApiKey(target.apiKey);
         setTemperature(target.temperature);
         setMaxTokens(target.maxTokens);
-        setSecureStore(Boolean(target.secureStore));
         setNotes(target.notes ?? '');
         setStatus(target.status);
         setLastConnectedAt(target.lastConnectedAt);
@@ -76,6 +432,11 @@ export default function ApiConfigScreen() {
 
     loadProvider();
   }, [providerId]);
+
+  useEffect(() => {
+    setAvailableModels([]);
+    setModelsError(null);
+  }, [provider, baseUrl]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -94,7 +455,6 @@ export default function ApiConfigScreen() {
         apiKey: apiKey.trim(),
         temperature,
         maxTokens,
-        secureStore,
         notes: notes.trim() || undefined,
         status,
         lastConnectedAt,
@@ -132,6 +492,74 @@ export default function ApiConfigScreen() {
     Alert.alert('导入 JSON', '此功能将在后续版本中提供。');
   };
 
+  const handleFetchModels = useCallback(async () => {
+    if (!apiKey.trim()) {
+      Alert.alert('获取模型', '请先填写 API 密钥');
+      return;
+    }
+
+    setModelsError(null);
+    setModelsLoading(true);
+
+    try {
+      const trimmedBaseUrl = baseUrl.trim();
+      const trimmedKey = apiKey.trim();
+
+      let url: string;
+      let init: RequestInit = {};
+
+      if (provider === 'openai') {
+        const base = (trimmedBaseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
+        url = `${base}/models`;
+        init = {
+          headers: {
+            Authorization: `Bearer ${trimmedKey}`,
+          },
+        };
+      } else {
+        const base = (trimmedBaseUrl || 'https://generativelanguage.googleapis.com/v1beta').replace(/\/$/, '');
+        url = `${base}/models?key=${encodeURIComponent(trimmedKey)}`;
+      }
+
+      const response = await fetch(url, init);
+      if (!response.ok) {
+        throw new Error(`Failed to load models: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const modelsList =
+        provider === 'openai'
+          ? Array.isArray(data?.data)
+            ? data.data
+                .map((item: { id?: string }) => item?.id)
+                .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+          : []
+          : Array.isArray(data?.models)
+          ? data.models
+              .map((item: { name?: string; id?: string }) => item?.name ?? item?.id)
+              .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+
+      const uniqueModels = Array.from(new Set(modelsList));
+
+      if (uniqueModels.length === 0) {
+        setModelsError('未获取到可用模型');
+        setAvailableModels([]);
+        return;
+      }
+
+      setAvailableModels(uniqueModels);
+      if (!uniqueModels.includes(model) && uniqueModels[0]) {
+        setModel(uniqueModels[0]);
+      }
+    } catch (error) {
+      console.error('获取模型失败', error);
+      setModelsError('获取模型失败，请稍后再试');
+    } finally {
+      setModelsLoading(false);
+    }
+  }, [apiKey, baseUrl, model, provider]);
+
   const statusMeta = getStatusMeta(status);
 
   return (
@@ -144,7 +572,7 @@ export default function ApiConfigScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={22} color="#e2e8f0" />
+              <Ionicons name="chevron-back" size={22} color={theme.icon} />
             </TouchableOpacity>
             <View>
               <Text style={styles.title}>API 设置</Text>
@@ -177,17 +605,76 @@ export default function ApiConfigScreen() {
               value={name}
               onChangeText={setName}
               placeholder="如：OpenAI - Prod"
-              placeholderTextColor="#475569"
+              placeholderTextColor={theme.placeholder}
             />
 
+            <View style={styles.fetchModelsRow}>
+              <TouchableOpacity style={styles.fetchButton} onPress={handleFetchModels} disabled={modelsLoading}>
+                {modelsLoading ? (
+                  <ActivityIndicator size="small" color={theme.secondaryButtonText} />
+                ) : (
+                  <Ionicons name="cloud-download" size={18} color={theme.secondaryButtonText} />
+                )}
+                <Text style={styles.fetchButtonText}>{modelsLoading ? '获取中…' : '获取模型'}</Text>
+              </TouchableOpacity>
+              {modelsError ? <Text style={styles.fetchError}>{modelsError}</Text> : null}
+            </View>
+
             <Text style={styles.label}>模型 (model)</Text>
+            {availableModels.length > 0 ? (
+              <View style={styles.modelPicker}>
+                {availableModels.map((item) => {
+                  const selected = item === model;
+                  return (
+                    <TouchableOpacity
+                      key={item}
+                      style={[styles.modelOption, selected && styles.modelOptionSelected]}
+                      onPress={() => setModel(item)}
+                    >
+                      <Text
+                        style={[styles.modelOptionText, selected && styles.modelOptionTextSelected]}
+                        numberOfLines={1}
+                      >
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <TextInput
+                style={styles.input}
+                value={model}
+                onChangeText={setModel}
+                placeholder={provider === 'gemini' ? 'models/gemini-1.5-flash' : 'gpt-4.1-mini'}
+                placeholderTextColor={theme.placeholder}
+                autoCapitalize="none"
+              />
+            )}
+
+            <Text style={styles.label}>网关 (可选)</Text>
             <TextInput
               style={styles.input}
-              value={model}
-              onChangeText={setModel}
-              placeholder={provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4.1-mini'}
-              placeholderTextColor="#475569"
+              value={baseUrl}
+              onChangeText={setBaseUrl}
+              placeholder="https://api.example.com"
+              placeholderTextColor={theme.placeholder}
               autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>密钥 ({provider === 'gemini' ? 'Gemini' : 'OpenAI'})</Text>
+            <TextInput
+              style={[styles.input, styles.secretInput]}
+              value={apiKey}
+              onChangeText={setApiKey}
+              placeholder={
+                provider === 'gemini'
+                  ? 'AIza...或来自Google Cloud的密钥'
+                  : 'sk-xxxxx'
+              }
+              placeholderTextColor={theme.placeholder}
+              autoCapitalize="none"
+              secureTextEntry
             />
 
             <View style={styles.sliderLabelRow}>
@@ -201,9 +688,9 @@ export default function ApiConfigScreen() {
                 maximumValue={2}
                 step={0.1}
                 value={temperature}
-                minimumTrackTintColor="#3b82f6"
-                maximumTrackTintColor="#1f2937"
-                thumbTintColor="#38bdf8"
+                minimumTrackTintColor={theme.accent}
+                maximumTrackTintColor={theme.sliderTrack}
+                thumbTintColor={theme.sliderThumb}
                 onValueChange={setTemperature}
               />
             </View>
@@ -219,45 +706,10 @@ export default function ApiConfigScreen() {
                 maximumValue={32000}
                 step={256}
                 value={maxTokens}
-                minimumTrackTintColor="#3b82f6"
-                maximumTrackTintColor="#1f2937"
-                thumbTintColor="#38bdf8"
+                minimumTrackTintColor={theme.accent}
+                maximumTrackTintColor={theme.sliderTrack}
+                thumbTintColor={theme.sliderThumb}
                 onValueChange={(value) => setMaxTokens(Math.round(value))}
-              />
-            </View>
-
-            <Text style={styles.label}>网关 (可选)</Text>
-            <TextInput
-              style={styles.input}
-              value={baseUrl}
-              onChangeText={setBaseUrl}
-              placeholder="https://api.example.com"
-              placeholderTextColor="#475569"
-              autoCapitalize="none"
-            />
-
-            <Text style={styles.label}>密钥 ({provider === 'gemini' ? 'Gemini' : 'OpenAI'})</Text>
-            <TextInput
-              style={[styles.input, styles.secretInput]}
-              value={apiKey}
-              onChangeText={setApiKey}
-              placeholder={provider === 'gemini' ? 'AIza...或来自Google Cloud的密钥' : 'sk-xxxxx'}
-              placeholderTextColor="#475569"
-              autoCapitalize="none"
-              secureTextEntry
-            />
-
-            <View style={styles.secureRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.secureTitle}>密钥保存到 SecureStore</Text>
-                <Text style={styles.secureCaption}>离线保存在本地设备中</Text>
-              </View>
-              <Switch
-                value={secureStore}
-                onValueChange={setSecureStore}
-                trackColor={{ false: '#1e293b', true: '#22c55e' }}
-                thumbColor="#0f172a"
-                ios_backgroundColor="#1e293b"
               />
             </View>
 
@@ -267,7 +719,7 @@ export default function ApiConfigScreen() {
               value={notes}
               onChangeText={setNotes}
               placeholder="可选：补充说明或使用场景"
-              placeholderTextColor="#475569"
+              placeholderTextColor={theme.placeholder}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
@@ -291,22 +743,26 @@ export default function ApiConfigScreen() {
                 onPress={handleSave}
                 disabled={saving}
               >
-                <Ionicons name="save" size={18} color="#0f172a" />
+                <Ionicons
+                  name="save"
+                  size={18}
+                  color={theme.primaryButtonText}
+                />
                 <Text style={styles.primaryButtonText}>{saving ? '保存中…' : '保存'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={handleTestConnection}>
-                <Ionicons name="link" size={18} color="#38bdf8" />
+                <Ionicons name="link" size={18} color={theme.secondaryButtonText} />
                 <Text style={styles.secondaryButtonText}>测试连接</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.utilityRow}>
               <TouchableOpacity style={styles.utilityButton} onPress={handleExportJson}>
-                <Ionicons name="download" size={16} color="#94a3b8" />
+                <Ionicons name="download" size={16} color={theme.iconMuted} />
                 <Text style={styles.utilityText}>导出 JSON</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.utilityButton} onPress={handleImportJson}>
-                <Ionicons name="cloud-upload" size={16} color="#94a3b8" />
+                <Ionicons name="cloud-upload" size={16} color={theme.iconMuted} />
                 <Text style={styles.utilityText}>导入 JSON</Text>
               </TouchableOpacity>
             </View>
@@ -328,211 +784,3 @@ function formatFullDate(input: string | number) {
     date.getMinutes(),
   ).padStart(2, '0')}`;
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#06070b',
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 120,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 16,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 16,
-    backgroundColor: '#0b1120',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    color: '#f8fafc',
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: '#64748b',
-    fontSize: 14,
-    marginTop: 6,
-  },
-  card: {
-    backgroundColor: '#0b1120',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    gap: 16,
-  },
-  label: {
-    color: '#cbd5f5',
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  segmentedControl: {
-    flexDirection: 'row',
-    backgroundColor: '#07090f',
-    borderRadius: 18,
-    padding: 6,
-  },
-  segmentButton: {
-    flex: 1,
-    borderRadius: 14,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  segmentButtonActive: {
-    backgroundColor: '#1d4ed8',
-  },
-  segmentText: {
-    color: '#64748b',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  segmentTextActive: {
-    color: '#e2e8f0',
-  },
-  input: {
-    backgroundColor: '#07090f',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 12,
-    color: '#e2e8f0',
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#111827',
-  },
-  secretInput: {
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
-  },
-  sliderLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sliderValue: {
-    color: '#e2e8f0',
-    fontWeight: '700',
-  },
-  sliderRow: {
-    paddingHorizontal: 4,
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-  },
-  secureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  secureTitle: {
-    color: '#cbd5f5',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  secureCaption: {
-    color: '#475569',
-    fontSize: 12,
-  },
-  notesInput: {
-    height: 96,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 4,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statusDescription: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  primaryActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  primaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#f8fafc',
-    borderRadius: 16,
-    paddingVertical: 14,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.7,
-  },
-  primaryButtonText: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 18,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1e40af',
-    height: 52,
-    justifyContent: 'center',
-    backgroundColor: '#081226',
-  },
-  secondaryButtonText: {
-    color: '#38bdf8',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  utilityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  utilityButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  utilityText: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-});

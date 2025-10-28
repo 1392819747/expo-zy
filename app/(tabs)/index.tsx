@@ -36,6 +36,7 @@ import Sortable, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiSettingsIcon from '../../components/icons/ApiSettingsIcon';
 import WallpaperIcon from '../../components/icons/WallpaperIcon';
+import WorldBookIcon from '../../components/icons/WorldBookIcon';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { fetchWeatherByLocation, fetchWeatherData, getUserLocation, WeatherData } from '../../services/weatherService';
 
@@ -104,7 +105,11 @@ const APP_ICONS: AppIconItem[] = [
     label: 'Wallpaper',
     renderIcon: size => <WallpaperIcon size={size} />
   },
-  { image: require('../../assets/images/app-icons/gmail.png'), kind: 'app', label: 'Gmail' },
+  {
+    kind: 'app',
+    label: '世界书',
+    renderIcon: size => <WorldBookIcon size={size} />
+  },
   { image: require('../../assets/images/app-icons/google.png'), kind: 'app', label: 'Google' },
   { image: require('../../assets/images/app-icons/youtube.png'), kind: 'app', label: 'YouTube' },
   { image: require('../../assets/images/app-icons/spotify.png'), kind: 'app', label: 'Spotify' },
@@ -689,6 +694,10 @@ export default function AppleIconSort() {
       }
       if (item.label === 'Wallpaper') {
         router.push('/wallpaper' as any);
+        return;
+      }
+      if (item.label === '世界书') {
+        router.push('/worldbook' as any);
         return;
       }
       Alert.alert(item.label, '该应用稍后提供完整体验。');

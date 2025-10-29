@@ -35,6 +35,7 @@ import Sortable, {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiSettingsIcon from '../../components/icons/ApiSettingsIcon';
+import MemoryIcon from '../../components/icons/MemoryIcon';
 import PresetIcon from '../../components/icons/PresetIcon';
 import WallpaperIcon from '../../components/icons/WallpaperIcon';
 import WorldBookIcon from '../../components/icons/WorldBookIcon';
@@ -115,7 +116,11 @@ const APP_ICONS: AppIconItem[] = [
     label: '世界书',
     renderIcon: size => <WorldBookIcon size={size} />
   },
-  { image: require('../../assets/images/app-icons/google.png'), kind: 'app', label: 'Google' },
+  {
+    kind: 'app',
+    label: '记忆',
+    renderIcon: size => <MemoryIcon size={size} />
+  },
   { image: require('../../assets/images/app-icons/youtube.png'), kind: 'app', label: 'YouTube' },
   { image: require('../../assets/images/app-icons/spotify.png'), kind: 'app', label: 'Spotify' },
   { image: require('../../assets/images/app-icons/paypal.png'), kind: 'app', label: 'PayPal' },
@@ -749,6 +754,10 @@ export default function AppleIconSort() {
       }
       if (item.label === '世界书') {
         router.push('/worldbook' as any);
+        return;
+      }
+      if (item.label === '记忆') {
+        router.push('/memory' as any);
         return;
       }
       Alert.alert(item.label, '该应用稍后提供完整体验。');

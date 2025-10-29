@@ -346,6 +346,42 @@ const WeatherWidget = memo(function WeatherWidget({
 }: WeatherWidgetProps) {
   const { isActive } = useItemContext();
 
+  const themeTokens = useMemo(
+    () =>
+      isDark
+        ? {
+            badgeBackground: 'rgba(255, 255, 255, 0.16)',
+            badgeText: '#ffffff',
+            divider: 'rgba(255, 255, 255, 0.16)',
+            forecastGradient: ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.05)'],
+            forecastTemp: '#ffffff',
+            forecastTime: 'rgba(226, 232, 255, 0.75)',
+            gradientColors: ['#0a0a0a', '#1a1a1a', '#2a2a2a'],
+            rangeCardBackground: 'rgba(12, 16, 34, 0.4)',
+            rangeLabel: 'rgba(226, 232, 255, 0.7)',
+            rangeValue: '#ffffff',
+            temperature: '#ffffff',
+            textPrimary: '#f6f7fb',
+            textSecondary: 'rgba(235, 239, 255, 0.7)'
+          }
+        : {
+            badgeBackground: 'rgba(255, 255, 255, 0.7)',
+            badgeText: '#0f172a',
+            divider: 'rgba(148, 163, 184, 0.35)',
+            forecastGradient: ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.7)'],
+            forecastTemp: '#1f2937',
+            forecastTime: 'rgba(55, 65, 81, 0.65)',
+            gradientColors: ['#f2f6ff', '#dbe8ff', '#b7d1ff'],
+            rangeCardBackground: 'rgba(255, 255, 255, 0.85)',
+            rangeLabel: 'rgba(55, 65, 81, 0.6)',
+            rangeValue: '#111827',
+            temperature: '#0f172a',
+            textPrimary: '#1f2937',
+            textSecondary: 'rgba(31, 41, 55, 0.7)'
+          },
+    [isDark]
+  );
+
   const shakeProgress = useDerivedValue(() =>
     isEditing.value
       ? withDelay(
@@ -377,47 +413,53 @@ const WeatherWidget = memo(function WeatherWidget({
       ]}>
       <Pressable onPress={onPress} style={{ flex: 1 }}>
         <LinearGradient
-          colors={isDark ? ['#0a0a0a', '#1a1a1a', '#2a2a2a'] : ['#1a1f38', '#1f2c5c', '#274782']}
+          colors={themeTokens.gradientColors}
           end={{ x: 1, y: 1 }}
           start={{ x: 0, y: 0 }}
-          style={[styles.widgetContainer, { height: size.height, width: size.width }]}>
-        <View style={styles.widgetHeader}>
-          <View>
-            <Text style={styles.widgetLocation}>{item.location}</Text>
-            <Text style={styles.widgetCondition}>{`今天 · ${item.condition}`}</Text>
-          </View>
-          <View style={styles.widgetBadge}>
-            <Text style={styles.widgetBadgeText}>🌤️</Text>
-          </View>
-        </View>
-        <View style={styles.widgetTemperatureRow}>
-          <Text style={styles.widgetTemperature}>{item.temperature}</Text>
-        </View>
-        <View style={styles.widgetRangeSection}>
-          <View style={styles.widgetRangeCard}>
-            <View style={styles.widgetRangeRow}>
-              <Text style={styles.widgetRangeLabel}>最高</Text>
-              <Text style={styles.widgetRangeValue}>{item.high}</Text>
+          style={[styles.widgetContainer, { height: size.height, width: size.width }]}
+        >
+          <View style={styles.widgetHeader}>
+            <View>
+              <Text style={[styles.widgetLocation, { color: themeTokens.textPrimary }]}>{item.location}</Text>
+              <Text style={[styles.widgetCondition, { color: themeTokens.textSecondary }]}>{`今天 · ${item.condition}`}</Text>
             </View>
-            <View style={styles.widgetRangeDivider} />
-            <View style={styles.widgetRangeRow}>
-              <Text style={styles.widgetRangeLabel}>最低</Text>
-              <Text style={styles.widgetRangeValue}>{item.low}</Text>
+            <View style={[styles.widgetBadge, { backgroundColor: themeTokens.badgeBackground }]}>
+              <Text style={[styles.widgetBadgeText, { color: themeTokens.badgeText }]}>🌤️</Text>
             </View>
           </View>
-        </View>
-        <View style={styles.widgetForecastRow}>
-          {item.hourly.map((forecastPoint, index) => (
-            <LinearGradient
-              colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.05)']}
-              end={{ x: 1, y: 1 }}
-              key={`${forecastPoint.time}-${index}`}
-              start={{ x: 0, y: 0 }}
-              style={styles.widgetForecastItem}>
-              <Text style={styles.widgetForecastTime}>{forecastPoint.time}</Text>
-              <Text style={styles.widgetForecastTemp}>{forecastPoint.temperature}</Text>
-            </LinearGradient>
-          ))}
+          <View style={styles.widgetTemperatureRow}>
+            <Text style={[styles.widgetTemperature, { color: themeTokens.temperature }]}>{item.temperature}</Text>
+          </View>
+          <View style={styles.widgetRangeSection}>
+            <View style={[styles.widgetRangeCard, { backgroundColor: themeTokens.rangeCardBackground }]}>
+              <View style={styles.widgetRangeRow}>
+                <Text style={[styles.widgetRangeLabel, { color: themeTokens.rangeLabel }]}>最高</Text>
+                <Text style={[styles.widgetRangeValue, { color: themeTokens.rangeValue }]}>{item.high}</Text>
+              </View>
+              <View style={[styles.widgetRangeDivider, { backgroundColor: themeTokens.divider }]} />
+              <View style={styles.widgetRangeRow}>
+                <Text style={[styles.widgetRangeLabel, { color: themeTokens.rangeLabel }]}>最低</Text>
+                <Text style={[styles.widgetRangeValue, { color: themeTokens.rangeValue }]}>{item.low}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.widgetForecastRow}>
+            {item.hourly.map((forecastPoint, index) => (
+              <LinearGradient
+                colors={themeTokens.forecastGradient}
+                end={{ x: 1, y: 1 }}
+                key={`${forecastPoint.time}-${index}`}
+                start={{ x: 0, y: 0 }}
+                style={styles.widgetForecastItem}
+              >
+                <Text style={[styles.widgetForecastTime, { color: themeTokens.forecastTime }]}>
+                  {forecastPoint.time}
+                </Text>
+                <Text style={[styles.widgetForecastTemp, { color: themeTokens.forecastTemp }]}>
+                  {forecastPoint.temperature}
+                </Text>
+              </LinearGradient>
+            ))}
         </View>
       </LinearGradient>
       </Pressable>

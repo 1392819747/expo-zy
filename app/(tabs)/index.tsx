@@ -35,7 +35,9 @@ import Sortable, {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiSettingsIcon from '../../components/icons/ApiSettingsIcon';
+import PresetIcon from '../../components/icons/PresetIcon';
 import WallpaperIcon from '../../components/icons/WallpaperIcon';
+import WorldBookIcon from '../../components/icons/WorldBookIcon';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { fetchWeatherByLocation, fetchWeatherData, getUserLocation, WeatherData } from '../../services/weatherService';
 
@@ -91,7 +93,11 @@ const createDockItemFromBoard = (item: BoardItem): AppIconItem => {
 const APP_ICONS: AppIconItem[] = [
   { image: require('../../assets/images/app-icons/facebook.png'), kind: 'app', label: 'Facebook' },
   { image: require('../../assets/images/app-icons/instagram.png'), kind: 'app', label: 'Instagram' },
-  { image: require('../../assets/images/app-icons/twitter.png'), kind: 'app', label: 'Twitter' },
+  {
+    kind: 'app',
+    label: '预设',
+    renderIcon: size => <PresetIcon size={size} />
+  },
   { image: require('../../assets/images/app-icons/whatsapp.png'), kind: 'app', label: 'WhatsApp' },
   { image: require('../../assets/images/app-icons/wechat.png'), kind: 'app', label: 'WeChat' },
   {
@@ -104,7 +110,11 @@ const APP_ICONS: AppIconItem[] = [
     label: 'Wallpaper',
     renderIcon: size => <WallpaperIcon size={size} />
   },
-  { image: require('../../assets/images/app-icons/gmail.png'), kind: 'app', label: 'Gmail' },
+  {
+    kind: 'app',
+    label: '世界书',
+    renderIcon: size => <WorldBookIcon size={size} />
+  },
   { image: require('../../assets/images/app-icons/google.png'), kind: 'app', label: 'Google' },
   { image: require('../../assets/images/app-icons/youtube.png'), kind: 'app', label: 'YouTube' },
   { image: require('../../assets/images/app-icons/spotify.png'), kind: 'app', label: 'Spotify' },
@@ -689,6 +699,14 @@ export default function AppleIconSort() {
       }
       if (item.label === 'Wallpaper') {
         router.push('/wallpaper' as any);
+        return;
+      }
+      if (item.label === '预设') {
+        router.push('/presets' as any);
+        return;
+      }
+      if (item.label === '世界书') {
+        router.push('/worldbook' as any);
         return;
       }
       Alert.alert(item.label, '该应用稍后提供完整体验。');
